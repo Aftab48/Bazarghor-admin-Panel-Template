@@ -18,3 +18,43 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Remove blue focus shadow/outlines from Ant Design components */
+:where(.ant-input:focus,
+  .ant-input-focused,
+  .ant-input-affix-wrapper:focus,
+  .ant-input-affix-wrapper-focused,
+  .ant-select-selector:focus,
+  .ant-select-focused .ant-select-selector,
+  .ant-picker:focus,
+  .ant-picker-focused,
+  .ant-btn:focus,
+  .ant-btn:active,
+  .ant-btn:focus-visible,
+  .ant-textarea:focus,
+  .ant-textarea-focused) {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Optional: keep border color stable on focus (prevent blue highlight) */
+:where(.ant-input:focus,
+  .ant-input-focused,
+  .ant-input-affix-wrapper:focus,
+  .ant-input-affix-wrapper-focused,
+  .ant-select-selector:focus,
+  .ant-select-focused .ant-select-selector,
+  .ant-picker:focus,
+  .ant-picker-focused,
+  .ant-textarea:focus,
+  .ant-textarea-focused) {
+  border-color: #d9d9d9 !important;
+  /* AntD default neutral border */
+}
+
+/* Button focus border color reset */
+:where(.ant-btn:focus,
+  .ant-btn:active,
+  .ant-btn:focus-visible) {
+  border-color: inherit !important;
+}

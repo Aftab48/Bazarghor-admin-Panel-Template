@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Layout, Menu } from 'antd';
-import { Link, useLocation } from 'react-router-dom';
+import { useState } from "react";
+import { Layout, Menu } from "antd";
+import { Link, useLocation } from "react-router-dom";
+import logo from "../../assets/images/Logo.png";
 import {
   DashboardOutlined,
   UserOutlined,
@@ -14,116 +15,120 @@ import {
   SettingOutlined,
   CustomerServiceOutlined,
   FileTextOutlined,
-} from '@ant-design/icons';
+} from "@ant-design/icons";
 
 const { Sider } = Layout;
 
 const menuItems = [
   {
-    key: '/',
+    key: "/",
     icon: <DashboardOutlined />,
     label: <Link to="/">Dashboard</Link>,
   },
   {
-    key: '/users',
+    key: "/users",
     icon: <UserOutlined />,
-    label: 'User Management',
+    label: "User Management",
     children: [
       {
-        key: '/users/customers',
+        key: "/users/customers",
         label: <Link to="/users/customers">Customers</Link>,
       },
       {
-        key: '/users/vendors',
+        key: "/users/vendors",
         label: <Link to="/users/vendors">Vendors</Link>,
       },
       {
-        key: '/users/delivery-agents',
+        key: "/users/delivery-agents",
         label: <Link to="/users/delivery-agents">Delivery Agents</Link>,
       },
     ],
   },
   {
-    key: '/vendor-management',
+    key: "/vendor-management",
     icon: <ShopOutlined />,
     label: <Link to="/vendor-management">Vendor Management</Link>,
   },
   {
-    key: '/delivery-management',
+    key: "/delivery-management",
     icon: <CarOutlined />,
     label: <Link to="/delivery-management">Delivery Management</Link>,
   },
   {
-    key: '/catalog',
+    key: "/catalog",
     icon: <AppstoreOutlined />,
-    label: 'Catalog',
+    label: "Catalog",
     children: [
       {
-        key: '/catalog/categories',
+        key: "/catalog/categories",
         label: <Link to="/catalog/categories">Categories</Link>,
       },
       {
-        key: '/catalog/products',
+        key: "/catalog/products",
         label: <Link to="/catalog/products">Products</Link>,
       },
     ],
   },
   {
-    key: '/orders',
+    key: "/orders",
     icon: <ShoppingCartOutlined />,
     label: <Link to="/orders">Order Management</Link>,
   },
   {
-    key: '/transactions',
+    key: "/transactions",
     icon: <DollarOutlined />,
     label: <Link to="/transactions">Payments & Transactions</Link>,
   },
   {
-    key: '/promotions',
+    key: "/promotions",
     icon: <TagOutlined />,
-    label: 'Promotions',
+    label: "Promotions",
     children: [
       {
-        key: '/promotions/banners',
+        key: "/promotions/banners",
         label: <Link to="/promotions/banners">Banners</Link>,
       },
       {
-        key: '/promotions/discount-codes',
+        key: "/promotions/discount-codes",
         label: <Link to="/promotions/discount-codes">Discount Codes</Link>,
       },
     ],
   },
   {
-    key: '/analytics',
+    key: "/analytics",
     icon: <BarChartOutlined />,
     label: <Link to="/analytics">Analytics & Reports</Link>,
   },
   {
-    key: '/settings',
+    key: "/settings",
     icon: <SettingOutlined />,
-    label: 'Settings',
+    label: "Settings",
     children: [
       {
-        key: '/settings/roles',
+        key: "/settings/staff",
+        label: <Link to="/settings/staff">Staff</Link>,
+      },
+      {
+        key: "/settings/roles",
         label: <Link to="/settings/roles">Roles & Permissions</Link>,
       },
-      {
-        key: '/settings/site',
-        label: <Link to="/settings/site">Site Settings</Link>,
-      },
-      {
-        key: '/settings/notifications',
-        label: <Link to="/settings/notifications">Notifications</Link>,
-      },
+      // {
+      //   key: "/settings/site",
+      //   label: <Link to="/settings/site">Site Settings</Link>,
+      // },
+      // {
+      //   key: "/settings/notifications",
+      //   label: <Link to="/settings/notifications">Notifications</Link>,
+      // },
     ],
   },
   {
-    key: '/support',
+    key: "/support",
     icon: <CustomerServiceOutlined />,
     label: <Link to="/support">Support Tickets</Link>,
   },
   {
-    key: '/audit-logs',
+    key: "/audit-logs",
     icon: <FileTextOutlined />,
     label: <Link to="/audit-logs">Audit Logs</Link>,
   },
@@ -138,19 +143,19 @@ const Sidebar = () => {
     const path = location.pathname;
     // Check exact match first
     let selectedKey = path;
-    
+
     // If no exact match, find parent menu item
-    if (!menuItems.find(item => item.key === path)) {
+    if (!menuItems.find((item) => item.key === path)) {
       for (const item of menuItems) {
         if (item.children) {
-          const child = item.children.find(c => c.key === path);
+          const child = item.children.find((c) => c.key === path);
           if (child) {
             return path;
           }
         }
       }
     }
-    
+
     return selectedKey;
   };
 
@@ -158,16 +163,18 @@ const Sidebar = () => {
   const getOpenKeys = () => {
     const path = location.pathname;
     const openKeys = [];
-    
-    menuItems.forEach(item => {
+
+    menuItems.forEach((item) => {
       if (item.children) {
-        const hasActiveChild = item.children.some(child => child.key === path);
+        const hasActiveChild = item.children.some(
+          (child) => child.key === path
+        );
         if (hasActiveChild) {
           openKeys.push(item.key);
         }
       }
     });
-    
+
     return openKeys;
   };
 
@@ -180,16 +187,32 @@ const Sidebar = () => {
       width={250}
       theme="light"
       style={{
-        overflow: 'auto',
-        height: '100vh',
-        position: 'fixed',
+        overflow: "auto",
+        height: "100vh",
+        position: "fixed",
         left: 0,
         top: 0,
         bottom: 0,
       }}
     >
-      <div className="flex items-center justify-center h-16 bg-blue-600 text-white text-xl font-bold">
-        {collapsed ? 'BZ' : 'Bazarghor'}
+      <div
+        className="flex items-center justify-center text-xl font-bold"
+        style={{
+          background: "#9dda52",
+          height: 64,
+          padding: collapsed ? "0 8px" : "0 16px",
+        }}
+      >
+        <img
+          src={logo}
+          alt="Bazarghor Logo"
+          style={{
+            height: collapsed ? 24 : 32,
+            maxWidth: collapsed ? 32 : 160,
+            width: "auto",
+            objectFit: "contain",
+          }}
+        />
       </div>
       <Menu
         mode="inline"
@@ -203,4 +226,3 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
-
