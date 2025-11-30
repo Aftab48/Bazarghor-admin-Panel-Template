@@ -1,51 +1,6 @@
-import axios from 'axios';
-import { message } from 'antd';
-import { API_BASE_URL, USE_MOCK_DATA } from '../constants/endpoints';
+import apiClient from '../config/api';
+import { USE_MOCK_DATA } from '../constants/endpoints';
 import { mockData, generateAnalytics, generateSalesByVendor, generateSalesByCategory } from '../mock/mockData';
-
-// Create axios instance
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor
-apiClient.interceptors.request.use(
-  (config) => {
-    // Add auth token if available (will be used when JWT is implemented)
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.code === 'ECONNABORTED' || error.message === 'Network Error') {
-      console.warn('⚠️ API unavailable, using mock data');
-    } else if (error.response) {
-      const status = error.response.status;
-      if (status === 401) {
-        message.error('Unauthorized. Please login again.');
-      } else if (status === 403) {
-        message.error('Access forbidden.');
-      } else if (status === 500) {
-        message.error('Server error. Please try again later.');
-      }
-    }
-    return Promise.reject(error);
-  }
-);
 
 // Helper function to handle API calls with fallback
 const apiCall = async (apiFunction, fallbackData) => {
@@ -59,11 +14,172 @@ const apiCall = async (apiFunction, fallbackData) => {
     const response = await apiFunction();
     return response.data;
   } catch (error) {
-    console.warn('⚠️ API call failed, using fallback mock data');
+    console.warn('⚠️ API call failed, using fallback mock data', error);
     await new Promise(resolve => setTimeout(resolve, 300));
     return fallbackData;
   }
 };
+
+const toArray = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.docs)) return payload.docs;
+  if (Array.isArray(payload?.data?.docs)) return payload.data.docs;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return [];
+};
+
+const buildName = (first, last, fallback = '') => {
+  const full = [first, last].filter(Boolean).join(' ').trim();
+  return full || fallback;
+};
+
+const formatDate = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+};
+
+const pickImage = (file) => {
+  if (!file) return undefined;
+  if (typeof file === 'string') return file;
+  return file.url || file.path || file.Location;
+};
+
+const toNumber = (value, fallback = 0) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const statusFromFlags = ({ status, isActive } = {}) => {
+  if (typeof status === 'string') return status.toLowerCase();
+  if (status === 3) return 'suspended';
+  if (status === 1) return 'pending';
+  if (isActive === false) return 'inactive';
+  return 'active';
+};
+
+const normalizeCustomers = (payload) => {
+  const list = toArray(payload).filter(Boolean);
+  return list.map((customer, index) => ({
+    id: customer.id ?? customer._id ?? index,
+    name: customer.name || buildName(customer.firstName, customer.lastName, 'Customer'),
+    email: customer.email ?? 'N/A',
+    phone: customer.phone ?? customer.mobNo ?? 'N/A',
+    status: customer.status ?? statusFromFlags(customer),
+    totalOrders: customer.totalOrders ?? customer.orderCount ?? 0,
+    totalSpent: toNumber(customer.totalSpent ?? customer.walletBalance),
+    joinedDate: customer.joinedDate ?? formatDate(customer.createdAt),
+    avatar: pickImage(customer.avatar || customer.profilePicture),
+  }));
+};
+
+const vendorStatus = (store = {}, vendor = {}) => {
+  if (vendor.status === 3 || store.status === 3) return 'suspended';
+  if (store.isApproved === false || store.status === 1) return 'pending';
+  if (vendor.isActive === false || store.isActive === false) return 'inactive';
+  return 'active';
+};
+
+const normalizeVendors = (payload) => {
+  const list = toArray(payload).filter(Boolean);
+  return list.map((item, index) => {
+    const vendor = item.vendor || item.vendorId || {};
+    return {
+      id: item.id ?? vendor._id ?? item._id ?? index,
+      businessName: item.businessName || item.storeName || item.storeDetails?.storeName || 'N/A',
+      ownerName: item.ownerName || buildName(vendor.firstName, vendor.lastName, 'Vendor'),
+      email: item.email ?? vendor.email ?? 'N/A',
+      phone: item.phone ?? vendor.mobNo ?? 'N/A',
+      status: item.status ?? vendorStatus(item, vendor),
+      totalSales: toNumber(item.totalSales),
+      productsCount: item.productsCount ?? item.productCount ?? 0,
+      commission: item.commission ?? 0,
+      logo: pickImage(item.logo || item.storePictures?.[0]),
+      address: item.address || item.storeAddress || item.storeDetails?.storeAddress || 'N/A',
+      joinedDate: item.joinedDate ?? formatDate(vendor.createdAt ?? item.createdAt),
+    };
+  });
+};
+
+const normalizeDeliveryAgents = (payload) => {
+  const list = toArray(payload).filter(Boolean);
+  return list.map((agent, index) => ({
+    id: agent.id ?? agent._id ?? index,
+    name: agent.name || buildName(agent.firstName, agent.lastName, 'Delivery Partner'),
+    email: agent.email ?? 'N/A',
+    phone: agent.phone ?? agent.mobNo ?? 'N/A',
+    status: agent.status ?? statusFromFlags(agent),
+    vehicleType: agent.vehicleType ?? agent.vehicleDetails?.vehicleType ?? 'cycle',
+    ordersDelivered: agent.ordersDelivered ?? agent.deliveryPartner?.totalDeliveries ?? 0,
+    rating: toNumber(agent.rating ?? agent.deliveryPartner?.rating ?? 5, 5),
+    earnings: toNumber(agent.earnings),
+    joinedDate: agent.joinedDate ?? formatDate(agent.createdAt),
+    avatar: pickImage(agent.avatar || agent.profilePicture),
+  }));
+};
+
+const ROLE_CODES = {
+  VENDOR: 'VENDOR',
+  DELIVERY_PARTNER: 'DELIVERY_PARTNER',
+};
+
+const VENDOR_STATUS_CODES = {
+  PENDING: 1,
+  APPROVED: 2,
+  DECLINED: 3,
+};
+
+const DELIVERY_STATUS_CODES = {
+  PENDING: 1,
+  APPROVED: 2,
+  DECLINED: 3,
+};
+
+const fetchVendorList = async (params) => {
+  const raw = await apiCall(
+    () => apiClient.get('/users/get-vendor-list', { params }),
+    mockData.vendors
+  );
+  return normalizeVendors(raw?.data ?? raw);
+};
+
+const fetchVendorDetails = async (id) => {
+  const fallback = mockData.vendors.find(v => Number(v.id) === Number(id)) || mockData.vendors[0];
+  const raw = await apiCall(
+    () => apiClient.get(`/users/get-vendor/${id}`),
+    fallback
+  );
+  const data = raw?.data ?? raw;
+  const [vendor] = normalizeVendors(data ? [data] : []);
+  return vendor || data;
+};
+
+const fetchDeliveryPartnerList = async (params) => {
+  const raw = await apiCall(
+    () => apiClient.get('/users/get-delivery-partner-list', { params }),
+    mockData.deliveryAgents
+  );
+  return normalizeDeliveryAgents(raw?.data ?? raw);
+};
+
+const verifyUserStatus = (id, roleType, successMessage) =>
+  apiCall(
+    () => apiClient.put(`/users/verify-status/${id}`, { roleType }),
+    { success: true, message: successMessage, roleType }
+  );
+
+const updateVendorRecord = (id, payload, message) =>
+  apiCall(
+    () => apiClient.put(`/users/update-vendor/${id}`, payload),
+    { success: true, message, data: payload }
+  );
+
+const updateDeliveryPartnerRecord = (id, payload, message) =>
+  apiCall(
+    () => apiClient.put(`/users/update-delivery-partner/${id}`, payload),
+    { success: true, message, data: payload }
+  );
 
 // Dashboard API
 export const dashboardAPI = {
@@ -80,20 +196,17 @@ export const dashboardAPI = {
 
 // Users API
 export const usersAPI = {
-  getCustomers: (params) => apiCall(
-    () => apiClient.get('/users/customers', { params }),
-    mockData.customers
-  ),
+  getCustomers: async (params) => {
+    const raw = await apiCall(
+      () => apiClient.get('/users/get-customer-list', { params }),
+      mockData.customers
+    );
+    return normalizeCustomers(raw?.data ?? raw);
+  },
   
-  getVendors: (params) => apiCall(
-    () => apiClient.get('/users/vendors', { params }),
-    mockData.vendors.filter(v => v.status !== 'pending')
-  ),
+  getVendors: (params) => fetchVendorList(params),
   
-  getDeliveryAgents: (params) => apiCall(
-    () => apiClient.get('/users/delivery-agents', { params }),
-    mockData.deliveryAgents.filter(a => a.status !== 'pending')
-  ),
+  getDeliveryAgents: (params) => fetchDeliveryPartnerList(params),
   
   activateUser: (id) => apiCall(
     () => apiClient.post(`/users/${id}/activate`),
@@ -133,66 +246,73 @@ export const usersAPI = {
 
 // Vendors API
 export const vendorsAPI = {
-  getPendingApprovals: () => apiCall(
-    () => apiClient.get('/vendors/pending'),
-    mockData.vendors.filter(v => v.status === 'pending')
-  ),
+  getPendingApprovals: async () => {
+    const vendors = await fetchVendorList();
+    return vendors.filter(v => v.status === 'pending');
+  },
   
-  approveVendor: (id) => apiCall(
-    () => apiClient.post(`/vendors/${id}/approve`),
-    { success: true, message: 'Vendor approved successfully' }
-  ),
+  approveVendor: (id) =>
+    verifyUserStatus(id, ROLE_CODES.VENDOR, 'Vendor approved successfully'),
   
-  rejectVendor: (id) => apiCall(
-    () => apiClient.post(`/vendors/${id}/reject`),
-    { success: true, message: 'Vendor rejected' }
-  ),
+  rejectVendor: (id) =>
+    updateVendorRecord(
+      id,
+      { status: VENDOR_STATUS_CODES.DECLINED, isActive: false },
+      'Vendor rejected'
+    ),
   
-  getVendorDetails: (id) => apiCall(
-    () => apiClient.get(`/vendors/${id}`),
-    mockData.vendors.find(v => v.id === parseInt(id))
-  ),
+  getVendorDetails: (id) => fetchVendorDetails(id),
   
-  suspendVendor: (id) => apiCall(
-    () => apiClient.post(`/vendors/${id}/suspend`),
-    { success: true, message: 'Vendor suspended' }
-  ),
+  suspendVendor: (id) =>
+    updateVendorRecord(
+      id,
+      { status: VENDOR_STATUS_CODES.DECLINED, isActive: false },
+      'Vendor suspended'
+    ),
   
-  unsuspendVendor: (id) => apiCall(
-    () => apiClient.post(`/vendors/${id}/unsuspend`),
-    { success: true, message: 'Vendor unsuspended' }
-  ),
+  unsuspendVendor: (id) =>
+    updateVendorRecord(
+      id,
+      { status: VENDOR_STATUS_CODES.APPROVED, isActive: true },
+      'Vendor unsuspended'
+    ),
 };
 
 // Delivery Agents API
 export const deliveryAgentsAPI = {
-  getPendingApprovals: () => apiCall(
-    () => apiClient.get('/delivery-agents/pending'),
-    mockData.deliveryAgents.filter(a => a.status === 'pending')
-  ),
+  getPendingApprovals: async () => {
+    const agents = await fetchDeliveryPartnerList();
+    return agents.filter(a => a.status === 'pending');
+  },
   
-  approveAgent: (id) => apiCall(
-    () => apiClient.post(`/delivery-agents/${id}/approve`),
-    { success: true, message: 'Agent approved successfully' }
-  ),
+  approveAgent: (id) =>
+    verifyUserStatus(id, ROLE_CODES.DELIVERY_PARTNER, 'Agent approved successfully'),
   
-  rejectAgent: (id) => apiCall(
-    () => apiClient.post(`/delivery-agents/${id}/reject`),
-    { success: true, message: 'Agent rejected' }
-  ),
+  rejectAgent: (id) =>
+    updateDeliveryPartnerRecord(
+      id,
+      { status: DELIVERY_STATUS_CODES.DECLINED, isActive: false },
+      'Agent rejected'
+    ),
   
-  getAgentPerformance: (id) => apiCall(
-    () => apiClient.get(`/delivery-agents/${id}/performance`),
-    mockData.deliveryAgents.find(a => a.id === parseInt(id))
-  ),
+  getAgentPerformance: async () => {
+    const agents = await fetchDeliveryPartnerList();
+    return agents.filter(a => a.status !== 'pending');
+  },
   
-  getPayouts: () => apiCall(
-    () => apiClient.get('/delivery-agents/payouts'),
-    mockData.deliveryAgents.map(a => ({
-      ...a,
-      pendingPayout: Math.floor(a.earnings * 0.3),
-    }))
-  ),
+  getPayouts: async () => {
+    const agents = await fetchDeliveryPartnerList();
+    return agents
+      .filter(a => a.status === 'active')
+      .map((agent) => {
+        const earnings = agent.earnings || agent.ordersDelivered * 50 || 0;
+        return {
+          ...agent,
+          earnings,
+          pendingPayout: Math.floor(earnings * 0.3),
+        };
+      });
+  },
 };
 
 // Categories API

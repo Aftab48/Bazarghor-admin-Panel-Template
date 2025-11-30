@@ -31,7 +31,7 @@ const VendorList = () => {
       setVendors(data);
       setPagination({ ...pagination, total: data.length });
     } catch (error) {
-      message.error('Failed to fetch vendors');
+      message.error(`Failed to fetch vendors: ${error.message}`);
     } finally {
       setLoading(false);
     }
