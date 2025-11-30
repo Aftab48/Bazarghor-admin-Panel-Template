@@ -1,6 +1,6 @@
 // API Endpoints Configuration
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5173/api";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 export const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === "true";
 
 export const ENDPOINTS = {
@@ -35,68 +35,85 @@ export const ENDPOINTS = {
   DASHBOARD_STATS: "/dashboard/stats",
   DASHBOARD_ANALYTICS: "/dashboard/analytics",
 
-  // Users
-  CUSTOMERS: "/users/customers",
-  VENDORS: "/users/vendors",
-  DELIVERY_AGENTS: "/users/delivery-agents",
-  USER_ACTIVATE: (id) => `/users/${id}/activate`,
-  USER_DEACTIVATE: (id) => `/users/${id}/deactivate`,
-  USER_SUSPEND: (id) => `/users/${id}/suspend`,
-  USER_RESET_PASSWORD: (id) => `/users/${id}/reset-password`,
+  // User Management - Customers
+  USERS_GET_CUSTOMER_LIST: "/users/get-customer-list",
+  USERS_GET_CUSTOMER: (id) => `/users/get-customer/${id}`,
+  USERS_CREATE_CUSTOMER: "/users/create-customer",
+  USERS_UPDATE_CUSTOMER: (id) => `/users/update-customer/${id}`,
+  USERS_DELETE_CUSTOMER: (id) => `/users/delete-customer/${id}`,
+  USERS_VERIFY_STATUS: (userId) => `/users/verify-status/${userId}`,
 
-  // Vendor Management
-  VENDOR_APPROVALS: "/vendors/pending",
-  VENDOR_APPROVE: (id) => `/vendors/${id}/approve`,
-  VENDOR_REJECT: (id) => `/vendors/${id}/reject`,
-  VENDOR_DETAILS: (id) => `/vendors/${id}`,
-  VENDOR_SALES: (id) => `/vendors/${id}/sales`,
-  VENDOR_INVENTORY: (id) => `/vendors/${id}/inventory`,
+  // User Management - Vendors
+  USERS_GET_VENDOR_LIST: "/users/get-vendor-list",
+  USERS_GET_VENDOR: (id) => `/users/get-vendor/${id}`,
+  USERS_CREATE_VENDOR: "/users/create-vendor",
+  USERS_UPDATE_VENDOR: (id) => `/users/update-vendor/${id}`,
+  USERS_DELETE_VENDOR: (id) => `/users/delete-vendor/${id}`,
 
-  // Delivery Agents
-  AGENT_APPROVALS: "/delivery-agents/pending",
-  AGENT_APPROVE: (id) => `/delivery-agents/${id}/approve`,
-  AGENT_REJECT: (id) => `/delivery-agents/${id}/reject`,
-  AGENT_PERFORMANCE: (id) => `/delivery-agents/${id}/performance`,
-  AGENT_PAYOUTS: "/delivery-agents/payouts",
+  // User Management - Delivery Partners
+  USERS_GET_DELIVERY_PARTNER_LIST: "/users/get-delivery-partner-list",
+  USERS_GET_DELIVERY_PARTNER: (id) => `/users/get-delivery-partner/${id}`,
+  USERS_CREATE_DELIVERY_PARTNER: "/users/create-delivery-partner",
+  USERS_UPDATE_DELIVERY_PARTNER: (id) => `/users/update-delivery-partner/${id}`,
+  USERS_DELETE_DELIVERY_PARTNER: (id) => `/users/delete-delivery-partner/${id}`,
 
-  // Categories & Products
-  CATEGORIES: "/categories",
-  PRODUCTS: "/products",
-  FEATURED_PRODUCTS: "/products/featured",
-  PRODUCT_TOGGLE_FEATURED: (id) => `/products/${id}/toggle-featured`,
+  // Products - Admin
+  PRODUCTS_ADMIN_ADD: "/products/admin/add-product",
+  PRODUCTS_ADMIN_GET_LIST: "/products/admin/get-products-list",
+  PRODUCTS_ADMIN_GET_BY_ID: (id) => `/products/admin/get-product/${id}`,
+  PRODUCTS_ADMIN_UPDATE: (id) => `/products/admin/update-product/${id}`,
+  PRODUCTS_ADMIN_DELETE: (id) => `/products/admin/delete-product/${id}`,
+  
+  // Products - Categories
+  PRODUCTS_CATEGORIES_LIST: "/products/categories/list",
 
-  // Orders
-  ORDERS: "/orders",
-  ORDER_DETAILS: (id) => `/orders/${id}`,
-  ORDER_ASSIGN_AGENT: (id) => `/orders/${id}/assign-agent`,
-  ORDER_UPDATE_STATUS: (id) => `/orders/${id}/status`,
-  ORDER_REFUND: (id) => `/orders/${id}/refund`,
+  // Stores - Admin
+  STORE_ADMIN_GET_ALL: "/store/admin/get-store",
+  STORE_ADMIN_GET_BY_ID: (id) => `/store/admin/get-store-by-id/${id}`,
+  STORE_ADMIN_UPDATE: (id) => `/store/admin/update-store-by-id/${id}`,
+  STORE_TOGGLE_STATUS: (storeId) => `/store/${storeId}/open-close`,
 
-  // Payments & Transactions
-  TRANSACTIONS: "/transactions",
-  VENDOR_PAYOUTS: "/payments/vendor-payouts",
-  COMMISSIONS: "/payments/commissions",
+  // Orders - Admin
+  ADMIN_ORDERS_BY_VENDOR: (vendorId) => `/admin/orders/vendor/${vendorId}`,
+  ADMIN_ORDER_HISTORY: (orderId) => `/admin/order/${orderId}/history`,
 
-  // Promotions
-  BANNERS: "/promotions/banners",
-  DISCOUNT_CODES: "/promotions/discount-codes",
+  // Vendor Subscriptions - Admin
+  ADMIN_VENDOR_SUBSCRIPTION_CREATE: "/admin/vendor-subscription",
+  ADMIN_VENDOR_SUBSCRIPTION_GET_ALL: "/admin/vendor-subscription",
+  ADMIN_VENDOR_SUBSCRIPTION_GET_BY_ID: (id) => `/admin/vendor-subscription/${id}`,
+  ADMIN_VENDOR_SUBSCRIPTION_ASSIGN: (subscriptionId) => `/admin/vendor-subscription/${subscriptionId}/assign`,
+  ADMIN_VENDOR_SUBSCRIPTION_RENEW: (id) => `/admin/vendor-subscription/${id}/renew`,
+  ADMIN_VENDOR_SUBSCRIPTION_UPGRADE: (id) => `/admin/vendor-subscription/${id}/upgrade`,
+  ADMIN_VENDOR_SUBSCRIPTION_CANCEL: (id) => `/admin/cancel-vendor-subscription/${id}`,
 
-  // Analytics & Reports
-  SALES_REPORTS: "/analytics/sales",
-  DELIVERY_REPORTS: "/analytics/delivery",
-  CUSTOMER_RETENTION: "/analytics/retention",
+  // Customer Subscriptions - Admin
+  ADMIN_CUSTOMER_SUBSCRIPTION_GET: (customerId) => `/admin/customer-subscription/${customerId}`,
+  ADMIN_CUSTOMER_SUBSCRIPTION_PURCHASE: (customerId) => `/admin/customer-subscription/${customerId}/purchase`,
+  ADMIN_CUSTOMER_SUBSCRIPTION_RENEW: (customerId) => `/admin/customer-subscription/${customerId}/renew`,
+  ADMIN_CUSTOMER_SUBSCRIPTION_CANCEL: (customerId) => `/admin/customer-subscription/${customerId}/cancel`,
+  ADMIN_CUSTOMER_SUBSCRIPTION_UPGRADE: (customerId) => `/admin/customer-subscription/${customerId}/upgrade`,
 
-  // Settings
-  ROLES: "/settings/roles",
-  PERMISSIONS: "/settings/permissions",
-  SITE_SETTINGS: "/settings/site",
-  NOTIFICATION_TEMPLATES: "/settings/notifications",
+  // Roles & Permissions
+  ADMIN_ROLES_GET: "/admin/roles-permissions/roles",
+  ADMIN_ROLES_UPDATE_PERMISSIONS: (code) => `/admin/roles-permissions/roles/${code}/permissions`,
+  ADMIN_ROLES_BULK_UPDATE_PERMISSIONS: "/admin/roles-permissions/roles/bulk/permissions",
 
-  // Support
-  TICKETS: "/support/tickets",
-  TICKET_REPLY: (id) => `/support/tickets/${id}/reply`,
-  TICKET_ASSIGN: (id) => `/support/tickets/${id}/assign`,
+  // Vendor Analytics
+  VENDOR_ANALYTICS_BASIC: "/vendor-analytics/analytics/basic",
+  VENDOR_ANALYTICS_LIMITED: "/vendor-analytics/analytics/limited",
+  VENDOR_ANALYTICS_FULL: "/vendor-analytics/analytics/full",
 
-  // Audit Logs
-  AUDIT_LOGS: "/audit/logs",
+  // Map/Places
+  MAP_PLS_AUTOSUGGEST: "/map-pls/places/autosuggest",
+  MAP_PLS_GEOCODE: "/map-pls/places/geocode",
+  MAP_PLS_REVERSE_GEOCODE: "/map-pls/places/reverse-geocode",
+
+  // Legacy endpoints (for backward compatibility)
+  CUSTOMERS: "/users/get-customer-list",
+  VENDORS: "/users/get-vendor-list",
+  DELIVERY_AGENTS: "/users/get-delivery-partner-list",
+  CATEGORIES: "/products/categories/list",
+  PRODUCTS: "/products/admin/get-products-list",
+  ORDERS: "/admin/orders",
+  ROLES: "/admin/roles-permissions/roles",
 };

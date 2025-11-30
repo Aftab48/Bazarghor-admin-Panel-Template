@@ -28,10 +28,20 @@ const VendorList = () => {
     setLoading(true);
     try {
       const data = await usersAPI.getVendors();
-      setVendors(data);
-      setPagination({ ...pagination, total: data.length });
+      console.log("📦 Vendors data received:", data);
+      if (Array.isArray(data)) {
+        setVendors(data);
+        setPagination({ ...pagination, total: data.length });
+      } else {
+        console.warn("⚠️ Vendors data is not an array:", data);
+        setVendors([]);
+        setPagination({ ...pagination, total: 0 });
+      }
     } catch (error) {
-      message.error(`Failed to fetch vendors: ${error.message}`);
+      console.error("❌ Error fetching vendors:", error);
+      message.error(`Failed to fetch vendors: ${error.message || 'Unknown error'}`);
+      setVendors([]);
+      setPagination({ ...pagination, total: 0 });
     } finally {
       setLoading(false);
     }
@@ -138,51 +148,72 @@ const VendorList = () => {
       title: 'Vendor',
       dataIndex: 'businessName',
       key: 'businessName',
-      render: (text, record) => (
-        <Space>
-          <Avatar src={record.logo} />
-          <div>
-            <div className="font-medium">{text}</div>
-            <div className="text-xs text-gray-500">{record.ownerName}</div>
-          </div>
-        </Space>
-      ),
+      render: (text, record) => {
+        if (!record) return '-';
+        const businessName = text || record.storeName || 'N/A';
+        const ownerName = record.ownerName || `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'N/A';
+        return (
+          <Space>
+            <Avatar src={record.logo || record.profilePicture?.uri || record.profilePicture} />
+            <div>
+              <div className="font-medium">{businessName}</div>
+              <div className="text-xs text-gray-500">{ownerName}</div>
+            </div>
+          </Space>
+        );
+      },
     },
     {
       title: 'Contact',
       dataIndex: 'email',
       key: 'email',
-      render: (text, record) => (
-        <div>
-          <div>{text}</div>
-          <div className="text-xs text-gray-500">{record.phone}</div>
-        </div>
-      ),
+      render: (text, record) => {
+        if (!record) return '-';
+        const email = text || record.email || 'N/A';
+        const phone = record.phone || record.mobNo || 'N/A';
+        return (
+          <div>
+            <div>{email}</div>
+            <div className="text-xs text-gray-500">{phone}</div>
+          </div>
+        );
+      },
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status) => <StatusTag status={status} />,
+      render: (status) => {
+        if (status === undefined || status === null) return <StatusTag status="unknown" />;
+        return <StatusTag status={status} />;
+      },
       filters: [
+        { text: 'Pending', value: 1 },
+        { text: 'Approved', value: 2 },
         { text: 'Active', value: 'active' },
         { text: 'Inactive', value: 'inactive' },
         { text: 'Suspended', value: 'suspended' },
       ],
-      onFilter: (value, record) => record.status === value,
+      onFilter: (value, record) => {
+        if (typeof value === 'number') {
+          return record.status === value;
+        }
+        return String(record.status).toLowerCase() === String(value).toLowerCase();
+      },
     },
     {
       title: 'Total Sales',
       dataIndex: 'totalSales',
       key: 'totalSales',
-      render: (amount) => `₹${amount.toLocaleString()}`,
-      sorter: (a, b) => a.totalSales - b.totalSales,
+      render: (amount) => `₹${(amount || 0).toLocaleString()}`,
+      sorter: (a, b) => (a.totalSales || 0) - (b.totalSales || 0),
     },
     {
       title: 'Products',
       dataIndex: 'productsCount',
       key: 'productsCount',
-      sorter: (a, b) => a.productsCount - b.productsCount,
+      render: (count) => count || 0,
+      sorter: (a, b) => (a.productsCount || 0) - (b.productsCount || 0),
     },
     {
       title: 'Rating',
@@ -191,16 +222,21 @@ const VendorList = () => {
       render: (rating) => (
         <Space>
           <StarOutlined className="text-yellow-500" />
-          {rating}
+          {rating || 0}
         </Space>
       ),
-      sorter: (a, b) => a.rating - b.rating,
+      sorter: (a, b) => (a.rating || 0) - (b.rating || 0),
     },
     {
       title: 'Joined',
       dataIndex: 'joinedDate',
       key: 'joinedDate',
-      sorter: (a, b) => new Date(a.joinedDate) - new Date(b.joinedDate),
+      render: (date) => date ? new Date(date).toLocaleDateString() : 'N/A',
+      sorter: (a, b) => {
+        const dateA = a.joinedDate ? new Date(a.joinedDate) : new Date(0);
+        const dateB = b.joinedDate ? new Date(b.joinedDate) : new Date(0);
+        return dateA - dateB;
+      },
     },
     {
       title: 'Actions',
@@ -214,10 +250,14 @@ const VendorList = () => {
   ];
 
   const filteredVendors = vendors.filter(
-    (vendor) =>
-      vendor.businessName.toLowerCase().includes(searchText.toLowerCase()) ||
-      vendor.ownerName.toLowerCase().includes(searchText.toLowerCase()) ||
-      vendor.email.toLowerCase().includes(searchText.toLowerCase())
+    (vendor) => {
+      if (!vendor) return false;
+      const businessName = (vendor.businessName || vendor.storeName || '').toLowerCase();
+      const ownerName = (vendor.ownerName || `${vendor.firstName || ''} ${vendor.lastName || ''}`.trim() || '').toLowerCase();
+      const email = (vendor.email || '').toLowerCase();
+      const search = searchText.toLowerCase();
+      return businessName.includes(search) || ownerName.includes(search) || email.includes(search);
+    }
   );
 
   return (
@@ -241,11 +281,16 @@ const VendorList = () => {
 
       <Table
         columns={columns}
-        dataSource={filteredVendors}
-        rowKey="id"
+        dataSource={filteredVendors || []}
+        rowKey={(record) => record?.id || record?._id || Math.random()}
         loading={loading}
-        pagination={pagination}
+        pagination={{
+          ...pagination,
+          total: filteredVendors?.length || 0,
+          showTotal: (total) => `Total ${total} vendors`,
+        }}
         onChange={(newPagination) => setPagination(newPagination)}
+        locale={{ emptyText: 'No vendors found' }}
       />
     </div>
   );

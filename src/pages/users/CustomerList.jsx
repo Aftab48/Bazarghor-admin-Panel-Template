@@ -29,10 +29,20 @@ const CustomerList = () => {
     setLoading(true);
     try {
       const data = await usersAPI.getCustomers();
-      setCustomers(data);
-      setPagination({ ...pagination, total: data.length });
-    } catch {
-      message.error('Failed to fetch customers');
+      console.log("📦 Customers data received:", data);
+      if (Array.isArray(data)) {
+        setCustomers(data);
+        setPagination({ ...pagination, total: data.length });
+      } else {
+        console.warn("⚠️ Customers data is not an array:", data);
+        setCustomers([]);
+        setPagination({ ...pagination, total: 0 });
+      }
+    } catch (error) {
+      console.error("❌ Error fetching customers:", error);
+      message.error(`Failed to fetch customers: ${error.message || 'Unknown error'}`);
+      setCustomers([]);
+      setPagination({ ...pagination, total: 0 });
     } finally {
       setLoading(false);
     }
@@ -139,51 +149,74 @@ const CustomerList = () => {
       title: 'Customer',
       dataIndex: 'name',
       key: 'name',
-      render: (text, record) => (
-        <Space>
-          <Avatar src={record.avatar} icon={<UserOutlined />} />
-          <div>
-            <div className="font-medium">{text}</div>
-            <div className="text-xs text-gray-500">{record.email}</div>
-          </div>
-        </Space>
-      ),
+      render: (text, record) => {
+        if (!record) return '-';
+        const name = text || `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'N/A';
+        const email = record.email || 'N/A';
+        const avatar = record.avatar || record.profilePicture?.uri || record.profilePicture;
+        return (
+          <Space>
+            <Avatar src={avatar} icon={<UserOutlined />} />
+            <div>
+              <div className="font-medium">{name}</div>
+              <div className="text-xs text-gray-500">{email}</div>
+            </div>
+          </Space>
+        );
+      },
     },
     {
       title: 'Phone',
       dataIndex: 'phone',
       key: 'phone',
+      render: (phone, record) => phone || record.mobNo || 'N/A',
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status) => <StatusTag status={status} />,
+      render: (status) => {
+        if (status === undefined || status === null) return <StatusTag status="unknown" />;
+        return <StatusTag status={status} />;
+      },
       filters: [
+        { text: 'Pending', value: 1 },
+        { text: 'Approved', value: 2 },
         { text: 'Active', value: 'active' },
         { text: 'Inactive', value: 'inactive' },
         { text: 'Suspended', value: 'suspended' },
       ],
-      onFilter: (value, record) => record.status === value,
+      onFilter: (value, record) => {
+        if (typeof value === 'number') {
+          return record.status === value;
+        }
+        return String(record.status).toLowerCase() === String(value).toLowerCase();
+      },
     },
     {
       title: 'Total Orders',
       dataIndex: 'totalOrders',
       key: 'totalOrders',
-      sorter: (a, b) => a.totalOrders - b.totalOrders,
+      render: (count) => count || 0,
+      sorter: (a, b) => (a.totalOrders || 0) - (b.totalOrders || 0),
     },
     {
       title: 'Total Spent',
       dataIndex: 'totalSpent',
       key: 'totalSpent',
-      render: (amount) => `₹${amount}`,
-      sorter: (a, b) => a.totalSpent - b.totalSpent,
+      render: (amount) => `₹${(amount || 0).toLocaleString()}`,
+      sorter: (a, b) => (a.totalSpent || 0) - (b.totalSpent || 0),
     },
     {
       title: 'Joined Date',
       dataIndex: 'joinedDate',
       key: 'joinedDate',
-      sorter: (a, b) => new Date(a.joinedDate) - new Date(b.joinedDate),
+      render: (date) => date ? new Date(date).toLocaleDateString() : 'N/A',
+      sorter: (a, b) => {
+        const dateA = a.joinedDate ? new Date(a.joinedDate) : new Date(0);
+        const dateB = b.joinedDate ? new Date(b.joinedDate) : new Date(0);
+        return dateA - dateB;
+      },
     },
     {
       title: 'Actions',
@@ -197,9 +230,13 @@ const CustomerList = () => {
   ];
 
   const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchText.toLowerCase())
+    (customer) => {
+      if (!customer) return false;
+      const name = (customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || '').toLowerCase();
+      const email = (customer.email || '').toLowerCase();
+      const search = searchText.toLowerCase();
+      return name.includes(search) || email.includes(search);
+    }
   );
 
   return (
@@ -223,11 +260,16 @@ const CustomerList = () => {
 
       <Table
         columns={columns}
-        dataSource={filteredCustomers}
-        rowKey="id"
+        dataSource={filteredCustomers || []}
+        rowKey={(record) => record?.id || record?._id || Math.random()}
         loading={loading}
-        pagination={pagination}
+        pagination={{
+          ...pagination,
+          total: filteredCustomers?.length || 0,
+          showTotal: (total) => `Total ${total} customers`,
+        }}
         onChange={(newPagination) => setPagination(newPagination)}
+        locale={{ emptyText: 'No customers found' }}
       />
     </div>
   );

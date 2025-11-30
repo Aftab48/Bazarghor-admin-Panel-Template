@@ -63,6 +63,78 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Helper function to extract data from backend response
+// Backend returns: { code, message, data } format
+const extractResponseData = (response) => {
+  const responseData = response?.data || response;
+  // Backend uses { code, message, data } format
+  if (responseData?.data !== undefined) {
+    return responseData.data;
+  }
+  // Handle direct data
+  if (responseData?.success !== undefined || responseData?.code !== undefined) {
+    return responseData;
+  }
+  return responseData;
+};
+
+// Helper function to transform vendor store data to vendor format
+// Backend returns stores with populated vendorId, need to merge them
+const transformVendorData = (stores) => {
+  if (!Array.isArray(stores)) {
+    console.warn("⚠️ transformVendorData: stores is not an array", stores);
+    return [];
+  }
+  return stores
+    .filter((store) => store && store.vendorId) // Filter out stores without vendorId
+    .map((store) => {
+      const vendor = store.vendorId || {};
+      const vendorId = vendor._id || vendor.id;
+      const storeId = store._id || store.id;
+      
+      // Handle profile picture - could be object with uri or string
+      const profilePic = vendor.profilePicture;
+      const profilePicUri = typeof profilePic === 'object' ? profilePic?.uri : profilePic;
+      
+      // Handle store pictures - array of file objects
+      const storePic = Array.isArray(store.storePictures) && store.storePictures.length > 0
+        ? store.storePictures[0]
+        : null;
+      const storePicUri = typeof storePic === 'object' ? storePic?.uri : storePic;
+      
+      return {
+        id: vendorId || storeId,
+        _id: vendorId || storeId,
+        businessName: store.storeName || vendor.storeName || 'N/A',
+        storeName: store.storeName,
+        ownerName: `${vendor.firstName || ''} ${vendor.lastName || ''}`.trim() || 'N/A',
+        firstName: vendor.firstName,
+        lastName: vendor.lastName,
+        email: vendor.email || store.email || '',
+        phone: vendor.mobNo || store.contactNumber || '',
+        mobNo: vendor.mobNo,
+        address: store.storeAddress || '',
+        storeAddress: store.storeAddress,
+        status: vendor.status !== undefined ? vendor.status : (store.storeStatus !== undefined ? store.storeStatus : 1),
+        isActive: vendor.isActive !== undefined ? vendor.isActive : true,
+        profilePicture: profilePic,
+        logo: storePicUri || profilePicUri,
+        storeCode: store.storeCode,
+        storeId: storeId,
+        vendorId: vendorId,
+        // Additional computed fields for UI
+        totalSales: store.totalSales || 0,
+        productsCount: store.productsCount || 0,
+        rating: store.rating || 0,
+        joinedDate: store.createdAt || store.joinedDate || new Date().toISOString(),
+        // Keep all original fields
+        ...store,
+        // Override with vendor data where applicable
+        ...vendor,
+      };
+    });
+};
+
 // Helper function to handle API calls with fallback
 const apiCall = async (apiFunction, fallbackData) => {
   if (USE_MOCK_DATA) {
@@ -73,11 +145,15 @@ const apiCall = async (apiFunction, fallbackData) => {
 
   try {
     const response = await apiFunction();
-    return response.data;
-  } catch {
-    console.warn("⚠️ API call failed, using fallback mock data");
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return fallbackData;
+    return extractResponseData(response);
+  } catch (error) {
+    console.warn("⚠️ API call failed, using fallback mock data", error);
+    if (USE_MOCK_DATA) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return fallbackData;
+    }
+    // Re-throw error if not using mock data
+    throw error;
   }
 };
 
@@ -93,150 +169,383 @@ export const dashboardAPI = {
     ),
 };
 
-// Users API
+// Users API - Customers
+// Note: Backend returns User documents directly
+export const customersAPI = {
+  getAll: async (params) => {
+    if (USE_MOCK_DATA) {
+      return mockData.customers;
+    }
+    try {
+      const response = await apiClient.get(ENDPOINTS.USERS_GET_CUSTOMER_LIST, { params });
+      const customers = extractResponseData(response);
+      // Transform customer data to match frontend format
+      return Array.isArray(customers) ? customers.map(c => ({
+        id: c._id || c.id,
+        _id: c._id,
+        name: `${c.firstName || ''} ${c.lastName || ''}`.trim(),
+        firstName: c.firstName,
+        lastName: c.lastName,
+        email: c.email,
+        phone: c.mobNo,
+        mobNo: c.mobNo,
+        status: c.status,
+        isActive: c.isActive,
+        profilePicture: c.profilePicture,
+        ...c,
+      })) : [];
+    } catch (error) {
+      console.warn("⚠️ Failed to fetch customers, using mock data", error);
+      return mockData.customers;
+    }
+  },
+
+  getById: async (id) => {
+    if (USE_MOCK_DATA) {
+      return mockData.customers[0];
+    }
+    try {
+      const response = await apiClient.get(ENDPOINTS.USERS_GET_CUSTOMER(id));
+      const customer = extractResponseData(response);
+      return {
+        id: customer._id || customer.id,
+        _id: customer._id,
+        name: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        email: customer.email,
+        phone: customer.mobNo,
+        mobNo: customer.mobNo,
+        status: customer.status,
+        isActive: customer.isActive,
+        profilePicture: customer.profilePicture,
+        ...customer,
+      };
+    } catch (error) {
+      console.warn("⚠️ Failed to fetch customer, using mock data", error);
+      return mockData.customers[0];
+    }
+  },
+
+  create: (formData) =>
+    apiCall(
+      () =>
+        apiClient.post(ENDPOINTS.USERS_CREATE_CUSTOMER, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      { success: true, message: "Customer created successfully" }
+    ),
+
+  update: (id, formData) =>
+    apiCall(
+      () =>
+        apiClient.put(ENDPOINTS.USERS_UPDATE_CUSTOMER(id), formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      { success: true, message: "Customer updated successfully" }
+    ),
+
+  delete: (id) =>
+    apiCall(
+      () => apiClient.delete(ENDPOINTS.USERS_DELETE_CUSTOMER(id)),
+      { success: true, message: "Customer deleted successfully" }
+    ),
+
+  verifyStatus: (userId, data) =>
+    apiCall(
+      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data),
+      { success: true, message: "Status updated successfully" }
+    ),
+};
+
+// Users API - Vendors
+// Note: Backend returns Store documents with populated vendorId
+export const vendorsAPI = {
+  getAll: async (params) => {
+    if (USE_MOCK_DATA) {
+      return mockData.vendors.filter((v) => v.status !== "pending");
+    }
+    try {
+      const response = await apiClient.get(ENDPOINTS.USERS_GET_VENDOR_LIST, { params });
+      console.log("📦 Raw vendor response:", response?.data);
+      const stores = extractResponseData(response);
+      console.log("📦 Extracted stores:", stores);
+      // Transform store data to vendor format
+      const transformed = transformVendorData(stores);
+      console.log("📦 Transformed vendors:", transformed);
+      return transformed;
+    } catch (error) {
+      console.error("❌ Failed to fetch vendors:", error);
+      console.warn("⚠️ Using mock data as fallback");
+      return mockData.vendors.filter((v) => v.status !== "pending");
+    }
+  },
+
+  getById: async (id) => {
+    if (USE_MOCK_DATA) {
+      return mockData.vendors.find((v) => v.id === parseInt(id));
+    }
+    try {
+      const response = await apiClient.get(ENDPOINTS.USERS_GET_VENDOR(id));
+      const store = extractResponseData(response);
+      // Transform single store to vendor format
+      const transformed = transformVendorData([store]);
+      return transformed[0] || null;
+    } catch (error) {
+      console.warn("⚠️ Failed to fetch vendor, using mock data", error);
+      return mockData.vendors.find((v) => v.id === parseInt(id));
+    }
+  },
+
+  create: (formData) =>
+    apiCall(
+      () =>
+        apiClient.post(ENDPOINTS.USERS_CREATE_VENDOR, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      { success: true, message: "Vendor created successfully" }
+    ),
+
+  update: (id, formData) =>
+    apiCall(
+      () =>
+        apiClient.put(ENDPOINTS.USERS_UPDATE_VENDOR(id), formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      { success: true, message: "Vendor updated successfully" }
+    ),
+
+  delete: (id) =>
+    apiCall(
+      () => apiClient.delete(ENDPOINTS.USERS_DELETE_VENDOR(id)),
+      { success: true, message: "Vendor deleted successfully" }
+    ),
+
+  verifyStatus: (userId, data) =>
+    apiCall(
+      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data),
+      { success: true, message: "Status updated successfully" }
+    ),
+
+  // Legacy approval methods (for backward compatibility)
+  // Note: Backend doesn't have /api/vendors/pending endpoint
+  // Fetch all vendors and filter by status=1 (PENDING) instead
+  // Backend uses: 1 = PENDING, 2 = APPROVED
+  getPendingApprovals: async () => {
+    if (USE_MOCK_DATA) {
+      return mockData.vendors.filter((v) => v.status === "pending" || v.status === 1);
+    }
+    // Fetch all vendors and filter by pending status (1 or "pending")
+    try {
+      const vendors = await vendorsAPI.getAll();
+      if (!Array.isArray(vendors)) return [];
+      return vendors.filter((v) => 
+        v.status === 1 || 
+        v.status === "pending" || 
+        v.status === "PENDING" ||
+        (typeof v.status === "string" && v.status.toLowerCase() === "pending")
+      );
+    } catch (error) {
+      console.warn("⚠️ Failed to fetch pending vendors", error);
+      return mockData.vendors.filter((v) => v.status === "pending" || v.status === 1);
+    }
+  },
+
+  approveVendor: (id) =>
+    vendorsAPI.verifyStatus(id, { status: 2 }), // 2 = APPROVED
+
+  rejectVendor: (id) =>
+    vendorsAPI.verifyStatus(id, { status: 1 }), // Set back to PENDING or use a rejected status
+
+  getVendorDetails: (id) =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.USERS_GET_VENDOR(id)),
+      mockData.vendors.find((v) => v.id === parseInt(id))
+    ),
+
+  suspendVendor: (id) =>
+    apiCall(
+      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(id), { status: "suspended" }),
+      { success: true, message: "Vendor suspended successfully" }
+    ),
+
+  unsuspendVendor: (id) =>
+    apiCall(
+      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(id), { status: "active" }),
+      { success: true, message: "Vendor unsuspended successfully" }
+    ),
+};
+
+// Users API - Delivery Partners
+// Note: Backend returns User documents directly
+export const deliveryPartnersAPI = {
+  getAll: async (params) => {
+    if (USE_MOCK_DATA) {
+      return mockData.deliveryAgents.filter((a) => a.status !== "pending");
+    }
+    try {
+      const response = await apiClient.get(ENDPOINTS.USERS_GET_DELIVERY_PARTNER_LIST, { params });
+      const partners = extractResponseData(response);
+      // Transform delivery partner data to match frontend format
+      return Array.isArray(partners) ? partners.map(p => ({
+        id: p._id || p.id,
+        _id: p._id,
+        name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+        firstName: p.firstName,
+        lastName: p.lastName,
+        email: p.email,
+        phone: p.mobNo,
+        mobNo: p.mobNo,
+        status: p.status,
+        isActive: p.isActive,
+        profilePicture: p.profilePicture,
+        vehicleType: p.vehicleDetails?.vehicleType,
+        vehicleDetails: p.vehicleDetails,
+        avatar: p.profilePicture?.uri || p.profilePicture,
+        ...p,
+      })) : [];
+    } catch (error) {
+      console.warn("⚠️ Failed to fetch delivery partners, using mock data", error);
+      return mockData.deliveryAgents.filter((a) => a.status !== "pending");
+    }
+  },
+
+  getById: async (id) => {
+    if (USE_MOCK_DATA) {
+      return mockData.deliveryAgents.find((a) => a.id === parseInt(id));
+    }
+    try {
+      const response = await apiClient.get(ENDPOINTS.USERS_GET_DELIVERY_PARTNER(id));
+      const partner = extractResponseData(response);
+      return {
+        id: partner._id || partner.id,
+        _id: partner._id,
+        name: `${partner.firstName || ''} ${partner.lastName || ''}`.trim(),
+        firstName: partner.firstName,
+        lastName: partner.lastName,
+        email: partner.email,
+        phone: partner.mobNo,
+        mobNo: partner.mobNo,
+        status: partner.status,
+        isActive: partner.isActive,
+        profilePicture: partner.profilePicture,
+        vehicleType: partner.vehicleDetails?.vehicleType,
+        vehicleDetails: partner.vehicleDetails,
+        avatar: partner.profilePicture?.uri || partner.profilePicture,
+        ...partner,
+      };
+    } catch (error) {
+      console.warn("⚠️ Failed to fetch delivery partner, using mock data", error);
+      return mockData.deliveryAgents.find((a) => a.id === parseInt(id));
+    }
+  },
+
+  create: (formData) =>
+    apiCall(
+      () =>
+        apiClient.post(ENDPOINTS.USERS_CREATE_DELIVERY_PARTNER, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      { success: true, message: "Delivery partner created successfully" }
+    ),
+
+  update: (id, formData) =>
+    apiCall(
+      () =>
+        apiClient.put(ENDPOINTS.USERS_UPDATE_DELIVERY_PARTNER(id), formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      { success: true, message: "Delivery partner updated successfully" }
+    ),
+
+  delete: (id) =>
+    apiCall(
+      () => apiClient.delete(ENDPOINTS.USERS_DELETE_DELIVERY_PARTNER(id)),
+      { success: true, message: "Delivery partner deleted successfully" }
+    ),
+
+  verifyStatus: (userId, data) =>
+    apiCall(
+      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data),
+      { success: true, message: "Status updated successfully" }
+    ),
+};
+
+// Legacy Users API (for backward compatibility)
 export const usersAPI = {
-  getCustomers: (params) =>
-    apiCall(
-      () => apiClient.get("/users/customers", { params }),
-      mockData.customers
-    ),
-
-  getVendors: (params) =>
-    apiCall(
-      () => apiClient.get("/users/vendors", { params }),
-      mockData.vendors.filter((v) => v.status !== "pending")
-    ),
-
-  getDeliveryAgents: (params) =>
-    apiCall(
-      () => apiClient.get("/users/delivery-agents", { params }),
-      mockData.deliveryAgents.filter((a) => a.status !== "pending")
-    ),
-
-  activateUser: (id) =>
-    apiCall(() => apiClient.post(`/users/${id}/activate`), {
-      success: true,
-      message: "User activated successfully",
-    }),
-
-  deactivateUser: (id) =>
-    apiCall(() => apiClient.post(`/users/${id}/deactivate`), {
-      success: true,
-      message: "User deactivated successfully",
-    }),
-
-  suspendUser: (id) =>
-    apiCall(() => apiClient.post(`/users/${id}/suspend`), {
-      success: true,
-      message: "User suspended successfully",
-    }),
-
-  deleteUser: (id) =>
-    apiCall(() => apiClient.delete(`/users/${id}`), {
-      success: true,
-      message: "User deleted successfully",
-    }),
-
+  getCustomers: (params) => customersAPI.getAll(params),
+  getVendors: (params) => vendorsAPI.getAll(params),
+  getDeliveryAgents: (params) => deliveryPartnersAPI.getAll(params),
+  activateUser: (id) => customersAPI.verifyStatus(id, { status: "active" }),
+  deactivateUser: (id) => customersAPI.verifyStatus(id, { status: "inactive" }),
+  suspendUser: (id) => customersAPI.verifyStatus(id, { status: "suspended" }),
+  deleteUser: (id) => customersAPI.delete(id),
   resetPassword: (id) =>
     apiCall(() => apiClient.post(`/users/${id}/reset-password`), {
       success: true,
       message: "Password reset email sent",
     }),
-
-  createUser: (data) =>
-    apiCall(() => apiClient.post("/users", data), {
-      success: true,
-      message: "User created successfully",
-      data,
-    }),
-
-  updateUser: (id, data) =>
-    apiCall(() => apiClient.put(`/users/${id}`, data), {
-      success: true,
-      message: "User updated successfully",
-      data,
-    }),
+  createUser: (data) => customersAPI.create(data),
+  updateUser: (id, data) => customersAPI.update(id, data),
 };
 
-// Vendors API
-export const vendorsAPI = {
-  getPendingApprovals: () =>
-    apiCall(
-      () => apiClient.get("/vendors/pending"),
-      mockData.vendors.filter((v) => v.status === "pending")
-    ),
+// Legacy alias for backward compatibility
+export const vendorApprovalsAPI = vendorsAPI;
 
-  approveVendor: (id) =>
-    apiCall(() => apiClient.post(`/vendors/${id}/approve`), {
-      success: true,
-      message: "Vendor approved successfully",
-    }),
-
-  rejectVendor: (id) =>
-    apiCall(() => apiClient.post(`/vendors/${id}/reject`), {
-      success: true,
-      message: "Vendor rejected",
-    }),
-
-  getVendorDetails: (id) =>
-    apiCall(
-      () => apiClient.get(`/vendors/${id}`),
-      mockData.vendors.find((v) => v.id === parseInt(id))
-    ),
-
-  suspendVendor: (id) =>
-    apiCall(() => apiClient.post(`/vendors/${id}/suspend`), {
-      success: true,
-      message: "Vendor suspended",
-    }),
-
-  unsuspendVendor: (id) =>
-    apiCall(() => apiClient.post(`/vendors/${id}/unsuspend`), {
-      success: true,
-      message: "Vendor unsuspended",
-    }),
-};
-
-// Delivery Agents API
+// Legacy Delivery Agents API (for backward compatibility)
+// Note: Backend doesn't have /api/delivery-agents/pending or /api/delivery-agents/payouts
+// Use deliveryPartnersAPI methods and verify-status endpoint instead
+// Backend uses: 1 = PENDING, 2 = APPROVED
 export const deliveryAgentsAPI = {
-  getPendingApprovals: () =>
-    apiCall(
-      () => apiClient.get("/delivery-agents/pending"),
-      mockData.deliveryAgents.filter((a) => a.status === "pending")
-    ),
+  getPendingApprovals: async () => {
+    if (USE_MOCK_DATA) {
+      return mockData.deliveryAgents.filter((a) => a.status === "pending" || a.status === 1);
+    }
+    // Fetch all delivery partners and filter by pending status (1 or "pending")
+    try {
+      const agents = await deliveryPartnersAPI.getAll();
+      if (!Array.isArray(agents)) return [];
+      return agents.filter((a) => 
+        a.status === 1 || 
+        a.status === "pending" || 
+        a.status === "PENDING" ||
+        (typeof a.status === "string" && a.status.toLowerCase() === "pending")
+      );
+    } catch (error) {
+      console.warn("⚠️ Failed to fetch pending delivery agents", error);
+      return mockData.deliveryAgents.filter((a) => a.status === "pending" || a.status === 1);
+    }
+  },
 
   approveAgent: (id) =>
-    apiCall(() => apiClient.post(`/delivery-agents/${id}/approve`), {
-      success: true,
-      message: "Agent approved successfully",
-    }),
+    deliveryPartnersAPI.verifyStatus(id, { status: 2 }), // 2 = APPROVED
 
   rejectAgent: (id) =>
-    apiCall(() => apiClient.post(`/delivery-agents/${id}/reject`), {
-      success: true,
-      message: "Agent rejected",
-    }),
+    deliveryPartnersAPI.verifyStatus(id, { status: 1 }), // Set back to PENDING
 
-  getAgentPerformance: (id) =>
-    apiCall(
-      () => apiClient.get(`/delivery-agents/${id}/performance`),
-      mockData.deliveryAgents.find((a) => a.id === parseInt(id))
-    ),
+  getAgentPerformance: (id) => deliveryPartnersAPI.getById(id),
 
-  getPayouts: () =>
-    apiCall(
-      () => apiClient.get("/delivery-agents/payouts"),
-      mockData.deliveryAgents.map((a) => ({
+  getPayouts: () => {
+    // Backend doesn't have this endpoint - return mock data or empty array
+    // Could calculate from delivery stats if available
+    if (USE_MOCK_DATA) {
+      return Promise.resolve(mockData.deliveryAgents.map((a) => ({
         ...a,
-        pendingPayout: Math.floor(a.earnings * 0.3),
-      }))
-    ),
+        pendingPayout: Math.floor((a.earnings || 0) * 0.3),
+      })));
+    }
+    // Return empty array since no payout endpoint exists
+    return Promise.resolve([]);
+  },
 };
 
 // Categories API
 export const categoriesAPI = {
   getAll: () =>
-    apiCall(() => apiClient.get("/categories"), mockData.categories),
+    apiCall(
+      () => apiClient.get(ENDPOINTS.PRODUCTS_CATEGORIES_LIST),
+      mockData.categories
+    ),
 
   create: (data) =>
     apiCall(() => apiClient.post("/categories", data), {
@@ -259,10 +568,19 @@ export const categoriesAPI = {
     }),
 };
 
-// Products API
+// Products API - Admin
 export const productsAPI = {
   getAll: (params) =>
-    apiCall(() => apiClient.get("/products", { params }), mockData.products),
+    apiCall(
+      () => apiClient.get(ENDPOINTS.PRODUCTS_ADMIN_GET_LIST, { params }),
+      mockData.products
+    ),
+
+  getById: (id) =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.PRODUCTS_ADMIN_GET_BY_ID(id)),
+      mockData.products[0]
+    ),
 
   getFeatured: () =>
     apiCall(
@@ -276,36 +594,60 @@ export const productsAPI = {
       message: "Product featured status updated",
     }),
 
-  create: (data) =>
-    apiCall(() => apiClient.post("/products", data), {
-      success: true,
-      message: "Product created successfully",
-      data,
-    }),
+  create: (formData) =>
+    apiCall(
+      () =>
+        apiClient.post(ENDPOINTS.PRODUCTS_ADMIN_ADD, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      { success: true, message: "Product created successfully" }
+    ),
 
-  update: (id, data) =>
-    apiCall(() => apiClient.put(`/products/${id}`, data), {
-      success: true,
-      message: "Product updated successfully",
-      data,
-    }),
+  update: (id, formData) =>
+    apiCall(
+      () =>
+        apiClient.put(ENDPOINTS.PRODUCTS_ADMIN_UPDATE(id), formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      { success: true, message: "Product updated successfully" }
+    ),
 
   delete: (id) =>
-    apiCall(() => apiClient.delete(`/products/${id}`), {
-      success: true,
-      message: "Product deleted successfully",
-    }),
+    apiCall(
+      () => apiClient.delete(ENDPOINTS.PRODUCTS_ADMIN_DELETE(id)),
+      { success: true, message: "Product deleted successfully" }
+    ),
 };
 
-// Orders API
+// Orders API - Admin
+// Note: Backend doesn't have a general /api/orders endpoint for admin
+// Admin can only view orders by vendor: /api/admin/orders/vendor/:vendorId
 export const ordersAPI = {
-  getAll: (params) =>
-    apiCall(() => apiClient.get("/orders", { params }), mockData.orders),
+  getAll: (params) => {
+    // Backend doesn't have general admin orders endpoint
+    // Return mock data only (no API call to avoid 404)
+    console.warn("⚠️ /api/orders endpoint doesn't exist in backend, using mock data");
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(mockData.orders), 100);
+    });
+  },
 
   getDetails: (id) =>
     apiCall(
       () => apiClient.get(`/orders/${id}`),
       mockData.orders.find((o) => o.id === parseInt(id))
+    ),
+
+  getOrdersByVendor: (vendorId) =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.ADMIN_ORDERS_BY_VENDOR(vendorId)),
+      mockData.orders
+    ),
+
+  getOrderHistory: (orderId) =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.ADMIN_ORDER_HISTORY(orderId)),
+      []
     ),
 
   assignAgent: (orderId, agentId) =>
@@ -430,12 +772,8 @@ export const analyticsAPI = {
 export const settingsAPI = {
   getRoles: () =>
     apiCall(
-      () => apiClient.get("/settings/roles"),
-      [
-        { id: 1, name: "Super Admin", permissions: ["all"] },
-        { id: 2, name: "Admin", permissions: ["users", "orders", "vendors"] },
-        { id: 3, name: "Support", permissions: ["tickets", "orders"] },
-      ]
+      () => apiClient.get(ENDPOINTS.ADMIN_ROLES_GET),
+      []
     ),
 
   getSiteSettings: () =>
@@ -592,6 +930,200 @@ export const staffAuthAPI = {
     ),
 };
 
+// Store API - Admin
+export const storeAPI = {
+  getAll: (params) =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.STORE_ADMIN_GET_ALL, { params }),
+      []
+    ),
+
+  getById: (id) =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.STORE_ADMIN_GET_BY_ID(id)),
+      null
+    ),
+
+  update: (id, data) =>
+    apiCall(
+      () => apiClient.put(ENDPOINTS.STORE_ADMIN_UPDATE(id), data),
+      { success: true, message: "Store updated successfully" }
+    ),
+
+  toggleStatus: (storeId, data) =>
+    apiCall(
+      () => apiClient.put(ENDPOINTS.STORE_TOGGLE_STATUS(storeId), data),
+      { success: true, message: "Store status updated successfully" }
+    ),
+};
+
+// Subscription API - Vendor & Customer
+export const subscriptionAPI = {
+  // Vendor Subscriptions
+  vendor: {
+    create: (data) =>
+      apiCall(
+        () => apiClient.post(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_CREATE, data),
+        { success: true, message: "Vendor subscription created successfully" }
+      ),
+
+    getAll: () =>
+      apiCall(
+        () => apiClient.get(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_GET_ALL),
+        []
+      ),
+
+    getById: (id) =>
+      apiCall(
+        () => apiClient.get(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_GET_BY_ID(id)),
+        null
+      ),
+
+    assign: (subscriptionId, data) =>
+      apiCall(
+        () =>
+          apiClient.put(
+            ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_ASSIGN(subscriptionId),
+            data
+          ),
+        { success: true, message: "Subscription assigned successfully" }
+      ),
+
+    renew: (id, data) =>
+      apiCall(
+        () => apiClient.put(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_RENEW(id), data),
+        { success: true, message: "Subscription renewed successfully" }
+      ),
+
+    upgrade: (id, data) =>
+      apiCall(
+        () =>
+          apiClient.put(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_UPGRADE(id), data),
+        { success: true, message: "Subscription upgraded successfully" }
+      ),
+
+    cancel: (id) =>
+      apiCall(
+        () => apiClient.delete(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_CANCEL(id)),
+        { success: true, message: "Subscription cancelled successfully" }
+      ),
+  },
+
+  // Customer Subscriptions
+  customer: {
+    get: (customerId) =>
+      apiCall(
+        () => apiClient.get(ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_GET(customerId)),
+        null
+      ),
+
+    purchase: (customerId, data) =>
+      apiCall(
+        () =>
+          apiClient.post(
+            ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_PURCHASE(customerId),
+            data
+          ),
+        { success: true, message: "Customer plan purchased successfully" }
+      ),
+
+    renew: (customerId, data) =>
+      apiCall(
+        () =>
+          apiClient.post(
+            ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_RENEW(customerId),
+            data
+          ),
+        { success: true, message: "Customer plan renewed successfully" }
+      ),
+
+    cancel: (customerId, data) =>
+      apiCall(
+        () =>
+          apiClient.post(
+            ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_CANCEL(customerId),
+            data
+          ),
+        { success: true, message: "Customer plan cancelled successfully" }
+      ),
+
+    upgrade: (customerId, data) =>
+      apiCall(
+        () =>
+          apiClient.post(
+            ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_UPGRADE(customerId),
+            data
+          ),
+        { success: true, message: "Customer plan upgraded successfully" }
+      ),
+  },
+};
+
+// Roles & Permissions API
+export const rolesAPI = {
+  getAll: () =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.ADMIN_ROLES_GET),
+      []
+    ),
+
+  updatePermissions: (code, data) =>
+    apiCall(
+      () =>
+        apiClient.put(ENDPOINTS.ADMIN_ROLES_UPDATE_PERMISSIONS(code), data),
+      { success: true, message: "Role permissions updated successfully" }
+    ),
+
+  bulkUpdatePermissions: (data) =>
+    apiCall(
+      () =>
+        apiClient.put(ENDPOINTS.ADMIN_ROLES_BULK_UPDATE_PERMISSIONS, data),
+      { success: true, message: "Role permissions updated successfully" }
+    ),
+};
+
+// Vendor Analytics API
+export const vendorAnalyticsAPI = {
+  getBasic: () =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_BASIC),
+      {}
+    ),
+
+  getLimited: () =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_LIMITED),
+      {}
+    ),
+
+  getFull: () =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_FULL),
+      {}
+    ),
+};
+
+// Map/Places API
+export const mapPlsAPI = {
+  autosuggest: (params = {}) =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.MAP_PLS_AUTOSUGGEST, { params }),
+      []
+    ),
+
+  geocode: (params = {}) =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.MAP_PLS_GEOCODE, { params }),
+      null
+    ),
+
+  reverseGeocode: (params = {}) =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.MAP_PLS_REVERSE_GEOCODE, { params }),
+      null
+    ),
+};
+
 // Admin API (profile & password flows)
 export const adminAPI = {
   getProfile: () =>
@@ -644,41 +1176,51 @@ export const staffAPI = {
   getById: (id) =>
     apiCall(() => apiClient.get(ENDPOINTS.STAFF_GET_BY_ID(id)), null),
 
-  addAdmin: (data) =>
-    apiCall(() => apiClient.post(ENDPOINTS.STAFF_ADD_ADMIN, data), {
-      success: true,
-      message: "Admin created (fallback)",
-      data,
-    }),
+  addAdmin: (formData) =>
+    apiCall(
+      () =>
+        apiClient.post(ENDPOINTS.STAFF_ADD_ADMIN, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      {
+        success: true,
+        message: "Admin created successfully",
+      }
+    ),
 
-  updateAdmin: (id, data) =>
-    apiCall(() => apiClient.put(ENDPOINTS.STAFF_UPDATE_ADMIN(id), data), {
-      success: true,
-      message: "Admin updated (fallback)",
-      data,
-    }),
+  updateAdmin: (id, formData) =>
+    apiCall(
+      () =>
+        apiClient.put(ENDPOINTS.STAFF_UPDATE_ADMIN(id), formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }),
+      {
+        success: true,
+        message: "Admin updated successfully",
+      }
+    ),
 
   deleteAdmin: (id) =>
     apiCall(() => apiClient.delete(ENDPOINTS.STAFF_DELETE(id)), {
       success: true,
-      message: "Admin deleted (fallback)",
+      message: "Admin deleted successfully",
     }),
 
-  // adminChangePassword: (id, data) =>
-  //   apiCall(
-  //     () => apiClient.post(ENDPOINTS.STAFF_ADMIN_CHANGE_PASSWORD(id), data),
-  //     {
-  //       success: true,
-  //       message: "Admin password changed (fallback)",
-  //     }
-  //   ),
+  adminChangePassword: (id, data) =>
+    apiCall(
+      () => apiClient.post(ENDPOINTS.STAFF_ADMIN_CHANGE_PASSWORD(id), data),
+      {
+        success: true,
+        message: "Admin password changed successfully",
+      }
+    ),
 
-  // subAdminChangePassword: (id, data) =>
-  //   apiCall(
-  //     () => apiClient.post(ENDPOINTS.STAFF_SUBADMIN_CHANGE_PASSWORD(id), data),
-  //     {
-  //       success: true,
-  //       message: "Sub-admin password changed (fallback)",
-  //     }
-  //   ),
+  subAdminChangePassword: (id, data) =>
+    apiCall(
+      () => apiClient.post(ENDPOINTS.STAFF_SUB_ADMIN_CHANGE_PASSWORD(id), data),
+      {
+        success: true,
+        message: "Sub-admin password changed successfully",
+      }
+    ),
 };

@@ -74,17 +74,22 @@ const RolesPermissions = () => {
       title: 'Permissions',
       dataIndex: 'permissions',
       key: 'permissions',
-      render: (permissions) => (
-        <div className="flex flex-wrap gap-1">
-          {permissions.includes('all') ? (
-            <Tag color="blue">All Permissions</Tag>
-          ) : (
-            permissions.map(perm => (
-              <Tag key={perm}>{perm}</Tag>
-            ))
-          )}
-        </div>
-      ),
+      render: (permissions) => {
+        if (!permissions || !Array.isArray(permissions)) {
+          return <Tag>No permissions</Tag>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {permissions.includes('all') ? (
+              <Tag color="blue">All Permissions</Tag>
+            ) : (
+              permissions.map(perm => (
+                <Tag key={perm}>{perm}</Tag>
+              ))
+            )}
+          </div>
+        );
+      },
     },
     {
       title: 'Actions',

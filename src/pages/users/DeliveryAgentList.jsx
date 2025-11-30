@@ -29,10 +29,20 @@ const DeliveryAgentList = () => {
     setLoading(true);
     try {
       const data = await usersAPI.getDeliveryAgents();
-      setAgents(data);
-      setPagination({ ...pagination, total: data.length });
+      console.log("📦 Delivery agents data received:", data);
+      if (Array.isArray(data)) {
+        setAgents(data);
+        setPagination({ ...pagination, total: data.length });
+      } else {
+        console.warn("⚠️ Delivery agents data is not an array:", data);
+        setAgents([]);
+        setPagination({ ...pagination, total: 0 });
+      }
     } catch (error) {
-      message.error('Failed to fetch delivery agents');
+      console.error("❌ Error fetching delivery agents:", error);
+      message.error(`Failed to fetch delivery agents: ${error.message || 'Unknown error'}`);
+      setAgents([]);
+      setPagination({ ...pagination, total: 0 });
     } finally {
       setLoading(false);
     }
@@ -139,49 +149,70 @@ const DeliveryAgentList = () => {
       title: 'Agent',
       dataIndex: 'name',
       key: 'name',
-      render: (text, record) => (
-        <Space>
-          <Avatar src={record.avatar} />
-          <div>
-            <div className="font-medium">{text}</div>
-            <div className="text-xs text-gray-500">{record.email}</div>
-          </div>
-        </Space>
-      ),
+      render: (text, record) => {
+        if (!record) return '-';
+        const name = text || `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'N/A';
+        const email = record.email || 'N/A';
+        const avatar = record.avatar || record.profilePicture?.uri || record.profilePicture;
+        return (
+          <Space>
+            <Avatar src={avatar} />
+            <div>
+              <div className="font-medium">{name}</div>
+              <div className="text-xs text-gray-500">{email}</div>
+            </div>
+          </Space>
+        );
+      },
     },
     {
       title: 'Phone',
       dataIndex: 'phone',
       key: 'phone',
+      render: (phone, record) => phone || record.mobNo || 'N/A',
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status) => <StatusTag status={status} />,
+      render: (status) => {
+        if (status === undefined || status === null) return <StatusTag status="unknown" />;
+        return <StatusTag status={status} />;
+      },
       filters: [
+        { text: 'Pending', value: 1 },
+        { text: 'Approved', value: 2 },
         { text: 'Active', value: 'active' },
         { text: 'Inactive', value: 'inactive' },
         { text: 'Suspended', value: 'suspended' },
       ],
-      onFilter: (value, record) => record.status === value,
+      onFilter: (value, record) => {
+        if (typeof value === 'number') {
+          return record.status === value;
+        }
+        return String(record.status).toLowerCase() === String(value).toLowerCase();
+      },
     },
     {
       title: 'Vehicle',
       dataIndex: 'vehicleType',
       key: 'vehicleType',
-      render: (vehicle) => (
-        <Space>
-          <CarOutlined />
-          {vehicle}
-        </Space>
-      ),
+      render: (vehicle, record) => {
+        const vehicleType = vehicle || record?.vehicleDetails?.vehicleType || 'N/A';
+        return (
+          <Space>
+            <CarOutlined />
+            {vehicleType}
+          </Space>
+        );
+      },
     },
     {
       title: 'Orders Delivered',
       dataIndex: 'ordersDelivered',
       key: 'ordersDelivered',
-      sorter: (a, b) => a.ordersDelivered - b.ordersDelivered,
+      render: (count) => count || 0,
+      sorter: (a, b) => (a.ordersDelivered || 0) - (b.ordersDelivered || 0),
     },
     {
       title: 'Rating',
@@ -190,23 +221,28 @@ const DeliveryAgentList = () => {
       render: (rating) => (
         <Space>
           <StarOutlined className="text-yellow-500" />
-          {rating}
+          {rating || 0}
         </Space>
       ),
-      sorter: (a, b) => a.rating - b.rating,
+      sorter: (a, b) => parseFloat(a.rating || 0) - parseFloat(b.rating || 0),
     },
     {
       title: 'Earnings',
       dataIndex: 'earnings',
       key: 'earnings',
-      render: (amount) => `₹${amount.toLocaleString()}`,
-      sorter: (a, b) => a.earnings - b.earnings,
+      render: (amount) => `₹${(amount || 0).toLocaleString()}`,
+      sorter: (a, b) => (a.earnings || 0) - (b.earnings || 0),
     },
     {
       title: 'Joined',
       dataIndex: 'joinedDate',
       key: 'joinedDate',
-      sorter: (a, b) => new Date(a.joinedDate) - new Date(b.joinedDate),
+      render: (date) => date ? new Date(date).toLocaleDateString() : 'N/A',
+      sorter: (a, b) => {
+        const dateA = a.joinedDate ? new Date(a.joinedDate) : new Date(0);
+        const dateB = b.joinedDate ? new Date(b.joinedDate) : new Date(0);
+        return dateA - dateB;
+      },
     },
     {
       title: 'Actions',
@@ -220,9 +256,13 @@ const DeliveryAgentList = () => {
   ];
 
   const filteredAgents = agents.filter(
-    (agent) =>
-      agent.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      agent.email.toLowerCase().includes(searchText.toLowerCase())
+    (agent) => {
+      if (!agent) return false;
+      const name = (agent.name || `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || '').toLowerCase();
+      const email = (agent.email || '').toLowerCase();
+      const search = searchText.toLowerCase();
+      return name.includes(search) || email.includes(search);
+    }
   );
 
   return (
@@ -246,11 +286,16 @@ const DeliveryAgentList = () => {
 
       <Table
         columns={columns}
-        dataSource={filteredAgents}
-        rowKey="id"
+        dataSource={filteredAgents || []}
+        rowKey={(record) => record?.id || record?._id || Math.random()}
         loading={loading}
-        pagination={pagination}
+        pagination={{
+          ...pagination,
+          total: filteredAgents?.length || 0,
+          showTotal: (total) => `Total ${total} delivery agents`,
+        }}
         onChange={(newPagination) => setPagination(newPagination)}
+        locale={{ emptyText: 'No delivery agents found' }}
       />
     </div>
   );

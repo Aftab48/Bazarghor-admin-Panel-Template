@@ -1,12 +1,26 @@
 import { Tag } from 'antd';
 
 const StatusTag = ({ status }) => {
+  // Handle numeric status codes from backend (1 = PENDING, 2 = APPROVED)
+  const numericStatusMap = {
+    1: { color: 'blue', text: 'Pending' },
+    2: { color: 'green', text: 'Approved' },
+  };
+
+  // If status is a number, use numeric mapping
+  if (typeof status === 'number') {
+    const config = numericStatusMap[status] || { color: 'default', text: `Status ${status}` };
+    return <Tag color={config.color}>{config.text}</Tag>;
+  }
+
   const statusConfig = {
     // User statuses
     active: { color: 'green', text: 'Active' },
     inactive: { color: 'red', text: 'Inactive' },
     suspended: { color: 'orange', text: 'Suspended' },
     pending: { color: 'blue', text: 'Pending' },
+    approved: { color: 'green', text: 'Approved' },
+    rejected: { color: 'red', text: 'Rejected' },
     
     // Order statuses
     confirmed: { color: 'cyan', text: 'Confirmed' },
@@ -35,7 +49,8 @@ const StatusTag = ({ status }) => {
     urgent: { color: 'red', text: 'Urgent' },
   };
 
-  const config = statusConfig[status?.toLowerCase()] || { color: 'default', text: status };
+  const statusStr = status ? String(status).toLowerCase() : '';
+  const config = statusConfig[statusStr] || { color: 'default', text: status || 'Unknown' };
 
   return <Tag color={config.color}>{config.text}</Tag>;
 };
