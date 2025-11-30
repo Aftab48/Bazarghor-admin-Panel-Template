@@ -4,6 +4,8 @@ import { Form, Input, Button, Typography, Card, message, Alert } from "antd";
 import apiClient from "../../services/api";
 import logo from "../../assets/images/Logo.png";
 import { ENDPOINTS } from "../../constants/endpoints";
+import { useAuth } from "../../hooks/useAuth";
+import { ROLES } from "../../constants/permissions";
 
 const { Title } = Typography;
 
@@ -14,52 +16,26 @@ function StaffLogin() {
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
 
+  // Get auth context - will throw error if not in AuthProvider, but that's expected
+  const { login, isAuthenticated, roles = [], loading: authLoading } = useAuth();
+
   useEffect(() => {
-    const existing = localStorage.getItem("authToken");
-    const role = localStorage.getItem("userRole");
-    if (existing && role && role !== "SUPER_ADMIN") {
+    if (!authLoading && isAuthenticated && roles.length > 0 && !roles.includes(ROLES.SUPER_ADMIN)) {
       navigate("/", { replace: true });
     }
-  }, [navigate]);
+  }, [isAuthenticated, roles, authLoading, navigate]);
 
   const onFinish = async (values) => {
     setLoading(true);
     try {
       setErrorMsg("");
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userRole");
-      localStorage.removeItem("userId");
 
       const response = await apiClient.post(ENDPOINTS.STAFF_LOGIN, {
         email: values.email,
         password: values.password,
       });
 
-      // Determine exact staff role (ADMIN vs SUB_ADMIN)
-      let userRole = "ADMIN";
-      const rawRole = (
-        response?.data?.data?.role ||
-        response?.data?.role ||
-        response?.role ||
-        response?.data?.user?.role ||
-        ""
-      )
-        .toString()
-        .toLowerCase();
-      if (rawRole.includes("sub")) userRole = "SUB_ADMIN";
-      else if (rawRole.includes("admin")) userRole = "ADMIN";
-      else {
-        try {
-          const subProbe = await apiClient.get(
-            ENDPOINTS.STAFF_SUB_ADMIN_PROFILE
-          );
-          if (subProbe?.status === 200) userRole = "SUB_ADMIN";
-        } catch (_) {
-          userRole = "ADMIN";
-        }
-      }
-
+      // Extract token
       let token =
         response?.data?.data?.token ||
         response?.data?.token ||
@@ -87,25 +63,72 @@ function StaffLogin() {
         return;
       }
 
-      localStorage.setItem("authToken", token);
-      if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
-      localStorage.setItem("userRole", userRole);
+      // Extract roles and permissions from response
+      const responseData = response?.data?.data || response?.data || response;
+      let userRoles = responseData?.roles || [];
+      
+      // Determine exact staff role (ADMIN vs SUB_ADMIN) if not in response
+      if (!userRoles || userRoles.length === 0) {
+        const rawRole = (
+          responseData?.role ||
+          response?.role ||
+          responseData?.user?.role ||
+          ""
+        )
+          .toString()
+          .toLowerCase();
+        if (rawRole.includes("sub")) {
+          userRoles = [ROLES.SUB_ADMIN];
+        } else if (rawRole.includes("admin")) {
+          userRoles = [ROLES.ADMIN];
+        } else {
+          // Try to determine by checking profile endpoint
+          try {
+            const subProbe = await apiClient.get(
+              ENDPOINTS.STAFF_SUB_ADMIN_PROFILE
+            );
+            if (subProbe?.status === 200) {
+              userRoles = [ROLES.SUB_ADMIN];
+            } else {
+              userRoles = [ROLES.ADMIN];
+            }
+          } catch (_) {
+            userRoles = [ROLES.ADMIN];
+          }
+        }
+      }
+      
+      const userPermissions = responseData?.permissions || [];
 
-      // Fetch staff profile to store userId
+      // Fetch staff profile to get userId
+      let userId = null;
       try {
         const profileEndpoint =
-          userRole === "SUB_ADMIN"
+          userRoles.includes(ROLES.SUB_ADMIN)
             ? ENDPOINTS.STAFF_SUB_ADMIN_PROFILE
             : ENDPOINTS.STAFF_ADMIN_PROFILE;
         const profResp = await apiClient.get(profileEndpoint);
         const raw = profResp?.data;
         const data = raw?.data || raw || profResp;
-        const id = data?.id || data?._id;
-        if (id) localStorage.setItem("userId", id);
+        userId = data?.id || data?._id;
       } catch (e) {}
 
+      // Use AuthContext login method
+      login({
+        token,
+        refreshToken,
+        roles: Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean),
+        permissions: Array.isArray(userPermissions) ? userPermissions : [],
+        user: userId ? { id: userId } : null,
+      });
+
       message.success("Logged in successfully");
-      navigate(from, { replace: true });
+      
+      // Wait for state to update before navigating
+      // Use setTimeout to ensure React state has updated
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 100);
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401 || status === 400) {

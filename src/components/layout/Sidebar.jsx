@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Layout, Menu } from "antd";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../../assets/images/Logo.png";
@@ -16,127 +16,194 @@ import {
   CustomerServiceOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
+import { useAuth } from "../../hooks/useAuth";
+import { usePermissions } from "../../hooks/usePermissions";
+import { PERMISSIONS } from "../../constants/permissions";
 
 const { Sider } = Layout;
-
-const menuItems = [
-  {
-    key: "/",
-    icon: <DashboardOutlined />,
-    label: <Link to="/">Dashboard</Link>,
-  },
-  {
-    key: "/users",
-    icon: <UserOutlined />,
-    label: "User Management",
-    children: [
-      {
-        key: "/users/customers",
-        label: <Link to="/users/customers">Customers</Link>,
-      },
-      {
-        key: "/users/vendors",
-        label: <Link to="/users/vendors">Vendors</Link>,
-      },
-      {
-        key: "/users/delivery-agents",
-        label: <Link to="/users/delivery-agents">Delivery Agents</Link>,
-      },
-    ],
-  },
-  {
-    key: "/vendor-management",
-    icon: <ShopOutlined />,
-    label: <Link to="/vendor-management">Vendor Management</Link>,
-  },
-  {
-    key: "/delivery-management",
-    icon: <CarOutlined />,
-    label: <Link to="/delivery-management">Delivery Management</Link>,
-  },
-  {
-    key: "/catalog",
-    icon: <AppstoreOutlined />,
-    label: "Catalog",
-    children: [
-      {
-        key: "/catalog/categories",
-        label: <Link to="/catalog/categories">Categories</Link>,
-      },
-      {
-        key: "/catalog/products",
-        label: <Link to="/catalog/products">Products</Link>,
-      },
-    ],
-  },
-  {
-    key: "/orders",
-    icon: <ShoppingCartOutlined />,
-    label: <Link to="/orders">Order Management</Link>,
-  },
-  {
-    key: "/transactions",
-    icon: <DollarOutlined />,
-    label: <Link to="/transactions">Payments & Transactions</Link>,
-  },
-  {
-    key: "/promotions",
-    icon: <TagOutlined />,
-    label: "Promotions",
-    children: [
-      {
-        key: "/promotions/banners",
-        label: <Link to="/promotions/banners">Banners</Link>,
-      },
-      {
-        key: "/promotions/discount-codes",
-        label: <Link to="/promotions/discount-codes">Discount Codes</Link>,
-      },
-    ],
-  },
-  {
-    key: "/analytics",
-    icon: <BarChartOutlined />,
-    label: <Link to="/analytics">Analytics & Reports</Link>,
-  },
-  {
-    key: "/settings",
-    icon: <SettingOutlined />,
-    label: "Settings",
-    children: [
-      {
-        key: "/settings/staff",
-        label: <Link to="/settings/staff">Staff</Link>,
-      },
-      {
-        key: "/settings/roles",
-        label: <Link to="/settings/roles">Roles & Permissions</Link>,
-      },
-      // {
-      //   key: "/settings/site",
-      //   label: <Link to="/settings/site">Site Settings</Link>,
-      // },
-      // {
-      //   key: "/settings/notifications",
-      //   label: <Link to="/settings/notifications">Notifications</Link>,
-      // },
-    ],
-  },
-  {
-    key: "/support",
-    icon: <CustomerServiceOutlined />,
-    label: <Link to="/support">Support Tickets</Link>,
-  },
-  {
-    key: "/audit-logs",
-    icon: <FileTextOutlined />,
-    label: <Link to="/audit-logs">Audit Logs</Link>,
-  },
-];
 
 const Sidebar = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const { hasPermission, hasAnyPermission, canAccessRoute } = usePermissions();
+
+  // Filter menu items based on permissions
+  const menuItems = useMemo(() => {
+    if (!isAuthenticated) return [];
+
+    const items = [
+      // Dashboard - always visible if authenticated
+      {
+        key: "/",
+        icon: <DashboardOutlined />,
+        label: <Link to="/">Dashboard</Link>,
+      },
+    ];
+
+    // User Management - show if user has any of the view permissions
+    const hasUserManagementAccess =
+      hasPermission(PERMISSIONS.VIEW_CUSTOMERS) ||
+      hasPermission(PERMISSIONS.VIEW_VENDORS) ||
+      hasPermission(PERMISSIONS.VIEW_DELIVERY_PARTNERS);
+
+    if (hasUserManagementAccess) {
+      const userChildren = [];
+      if (hasPermission(PERMISSIONS.VIEW_CUSTOMERS)) {
+        userChildren.push({
+          key: "/users/customers",
+          label: <Link to="/users/customers">Customers</Link>,
+        });
+      }
+      if (hasPermission(PERMISSIONS.VIEW_VENDORS)) {
+        userChildren.push({
+          key: "/users/vendors",
+          label: <Link to="/users/vendors">Vendors</Link>,
+        });
+      }
+      if (hasPermission(PERMISSIONS.VIEW_DELIVERY_PARTNERS)) {
+        userChildren.push({
+          key: "/users/delivery-agents",
+          label: <Link to="/users/delivery-agents">Delivery Agents</Link>,
+        });
+      }
+
+      if (userChildren.length > 0) {
+        items.push({
+          key: "/users",
+          icon: <UserOutlined />,
+          label: "User Management",
+          children: userChildren,
+        });
+      }
+    }
+
+    // Vendor Management
+    if (hasPermission(PERMISSIONS.VIEW_VENDORS)) {
+      items.push({
+        key: "/vendor-management",
+        icon: <ShopOutlined />,
+        label: <Link to="/vendor-management">Vendor Management</Link>,
+      });
+    }
+
+    // Delivery Management
+    if (hasPermission(PERMISSIONS.VIEW_DELIVERY_PARTNERS)) {
+      items.push({
+        key: "/delivery-management",
+        icon: <CarOutlined />,
+        label: <Link to="/delivery-management">Delivery Management</Link>,
+      });
+    }
+
+    // Catalog
+    if (hasPermission(PERMISSIONS.VIEW_PRODUCTS)) {
+      items.push({
+        key: "/catalog",
+        icon: <AppstoreOutlined />,
+        label: "Catalog",
+        children: [
+          {
+            key: "/catalog/categories",
+            label: <Link to="/catalog/categories">Categories</Link>,
+          },
+          {
+            key: "/catalog/products",
+            label: <Link to="/catalog/products">Products</Link>,
+          },
+        ],
+      });
+    }
+
+    // Orders
+    if (hasPermission(PERMISSIONS.VIEW_ORDERS)) {
+      items.push({
+        key: "/orders",
+        icon: <ShoppingCartOutlined />,
+        label: <Link to="/orders">Order Management</Link>,
+      });
+    }
+
+    // Transactions
+    if (hasPermission(PERMISSIONS.VIEW_ORDERS)) {
+      items.push({
+        key: "/transactions",
+        icon: <DollarOutlined />,
+        label: <Link to="/transactions">Payments & Transactions</Link>,
+      });
+    }
+
+    // Promotions
+    if (hasPermission(PERMISSIONS.VIEW_ORDERS)) {
+      items.push({
+        key: "/promotions",
+        icon: <TagOutlined />,
+        label: "Promotions",
+        children: [
+          {
+            key: "/promotions/banners",
+            label: <Link to="/promotions/banners">Banners</Link>,
+          },
+          {
+            key: "/promotions/discount-codes",
+            label: <Link to="/promotions/discount-codes">Discount Codes</Link>,
+          },
+        ],
+      });
+    }
+
+    // Analytics
+    if (hasPermission(PERMISSIONS.VIEW_ORDERS)) {
+      items.push({
+        key: "/analytics",
+        icon: <BarChartOutlined />,
+        label: <Link to="/analytics">Analytics & Reports</Link>,
+      });
+    }
+
+    // Settings
+    const settingsChildren = [];
+    if (
+      hasPermission(PERMISSIONS.VIEW_ADMINS) ||
+      hasPermission(PERMISSIONS.CREATE_SUB_ADMIN)
+    ) {
+      settingsChildren.push({
+        key: "/settings/staff",
+        label: <Link to="/settings/staff">Staff</Link>,
+      });
+    }
+    if (hasPermission(PERMISSIONS.MANAGE_ROLE_PERMISSIONS)) {
+      settingsChildren.push({
+        key: "/settings/roles",
+        label: <Link to="/settings/roles">Roles & Permissions</Link>,
+      });
+    }
+
+    if (settingsChildren.length > 0) {
+      items.push({
+        key: "/settings",
+        icon: <SettingOutlined />,
+        label: "Settings",
+        children: settingsChildren,
+      });
+    }
+
+    // Support - visible by default for now
+    items.push({
+      key: "/support",
+      icon: <CustomerServiceOutlined />,
+      label: <Link to="/support">Support Tickets</Link>,
+    });
+
+    // Audit Logs - visible by default for now
+    items.push({
+      key: "/audit-logs",
+      icon: <FileTextOutlined />,
+      label: <Link to="/audit-logs">Audit Logs</Link>,
+    });
+
+    return items;
+  }, [isAuthenticated, hasPermission]);
 
   // Find the selected key based on current path
   const getSelectedKey = () => {

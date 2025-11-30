@@ -1,19 +1,34 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { Result, Button } from "antd";
+import { Result, Button, Spin } from "antd";
+import { useAuth } from "../../hooks/useAuth";
 
-function RequireRole({ children, allowedRoles }) {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
-  const userRole =
-    typeof window !== "undefined" ? localStorage.getItem("userRole") : null;
+function RequireRole({ children, allowedRoles = [] }) {
+  const { isAuthenticated, hasRole, loading } = useAuth();
   const location = useLocation();
 
-  if (!token) {
-    // If not logged in, send to admin login by default
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (!userRole || !allowedRoles.includes(userRole)) {
+  // Check if user has any of the allowed roles
+  const hasRequiredRole = allowedRoles.length === 0 || allowedRoles.some(role => hasRole(role));
+
+  if (!hasRequiredRole) {
     return (
       <Result
         status="403"

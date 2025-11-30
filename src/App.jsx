@@ -1,10 +1,11 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ConfigProvider } from "antd";
+import { AuthProvider } from "./contexts/AuthContext";
 import MainLayout from "./components/layout/MainLayout";
 import RequireAuth from "./components/layout/RequireAuth";
 import RequireRole from "./components/layout/RequireRole";
-import AdminLogin from "./pages/login/Admin-Login";
-import StaffLogin from "./pages/login/Staff-Login";
+import RequirePermission from "./components/layout/RequirePermission";
+import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import CustomerList from "./pages/users/CustomerList";
@@ -27,6 +28,7 @@ import SiteSettings from "./pages/settings/SiteSettings";
 import NotificationTemplates from "./pages/settings/NotificationTemplates";
 import Tickets from "./pages/support/Tickets";
 import AuditLogs from "./pages/audit/AuditLogs";
+import { PERMISSIONS } from "./constants/permissions";
 
 function App() {
   return (
@@ -38,11 +40,12 @@ function App() {
         },
       }}
     >
-      <Router>
+      <AuthProvider>
+        <Router>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={<AdminLogin />} />
-          <Route path="/login-staff" element={<StaffLogin />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/login-staff" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           {/* Protected Routes */}
           <Route
@@ -56,41 +59,140 @@ function App() {
             <Route index element={<Dashboard />} />
 
             {/* User Management */}
-            <Route path="users/customers" element={<CustomerList />} />
-            <Route path="users/vendors" element={<VendorList />} />
+            <Route
+              path="users/customers"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_CUSTOMERS]}
+                >
+                  <CustomerList />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="users/vendors"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_VENDORS]}
+                >
+                  <VendorList />
+                </RequirePermission>
+              }
+            />
             <Route
               path="users/delivery-agents"
-              element={<DeliveryAgentList />}
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_DELIVERY_PARTNERS]}
+                >
+                  <DeliveryAgentList />
+                </RequirePermission>
+              }
             />
 
             {/* Vendor Management */}
-            <Route path="vendor-management" element={<VendorManagement />} />
+            <Route
+              path="vendor-management"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_VENDORS]}
+                >
+                  <VendorManagement />
+                </RequirePermission>
+              }
+            />
 
             {/* Delivery Management */}
             <Route
               path="delivery-management"
-              element={<DeliveryAgentManagement />}
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_DELIVERY_PARTNERS]}
+                >
+                  <DeliveryAgentManagement />
+                </RequirePermission>
+              }
             />
 
             {/* Catalog */}
-            <Route path="catalog/categories" element={<Categories />} />
-            <Route path="catalog/products" element={<Products />} />
+            <Route
+              path="catalog/categories"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_PRODUCTS]}
+                >
+                  <Categories />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="catalog/products"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_PRODUCTS]}
+                >
+                  <Products />
+                </RequirePermission>
+              }
+            />
 
             {/* Orders */}
-            <Route path="orders" element={<OrderManagement />} />
+            <Route
+              path="orders"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_ORDERS]}
+                >
+                  <OrderManagement />
+                </RequirePermission>
+              }
+            />
 
             {/* Transactions */}
-            <Route path="transactions" element={<Transactions />} />
+            <Route
+              path="transactions"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_ORDERS]}
+                >
+                  <Transactions />
+                </RequirePermission>
+              }
+            />
 
             {/* Promotions */}
-            <Route path="promotions/banners" element={<Banners />} />
+            <Route
+              path="promotions/banners"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_ORDERS]}
+                >
+                  <Banners />
+                </RequirePermission>
+              }
+            />
             <Route
               path="promotions/discount-codes"
-              element={<DiscountCodes />}
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_ORDERS]}
+                >
+                  <DiscountCodes />
+                </RequirePermission>
+              }
             />
 
             {/* Analytics */}
-            <Route path="analytics" element={<Reports />} />
+            <Route
+              path="analytics"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.VIEW_ORDERS]}
+                >
+                  <Reports />
+                </RequirePermission>
+              }
+            />
 
             {/* Settings */}
             <Route
@@ -109,8 +211,29 @@ function App() {
                 </RequireRole>
               }
             />
-            <Route path="settings/staff" element={<Staff />} />
-            <Route path="settings/roles" element={<RolesPermissions />} />
+            <Route
+              path="settings/staff"
+              element={
+                <RequirePermission
+                  requiredPermissions={[
+                    PERMISSIONS.VIEW_ADMINS,
+                    PERMISSIONS.CREATE_SUB_ADMIN,
+                  ]}
+                >
+                  <Staff />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="settings/roles"
+              element={
+                <RequirePermission
+                  requiredPermissions={[PERMISSIONS.MANAGE_ROLE_PERMISSIONS]}
+                >
+                  <RolesPermissions />
+                </RequirePermission>
+              }
+            />
             <Route path="settings/site" element={<SiteSettings />} />
             <Route
               path="settings/notifications"
@@ -124,7 +247,8 @@ function App() {
             <Route path="audit-logs" element={<AuditLogs />} />
           </Route>
         </Routes>
-      </Router>
+        </Router>
+      </AuthProvider>
     </ConfigProvider>
   );
 }

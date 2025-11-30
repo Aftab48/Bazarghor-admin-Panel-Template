@@ -6,6 +6,7 @@ import {
   Badge,
   Space,
   message,
+  Tag,
 } from "antd";
 import {
   BellOutlined,
@@ -17,12 +18,15 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import apiClient from "../../services/api";
 import { ENDPOINTS } from "../../constants/endpoints";
 import { useEffect, useState } from "react";
+import { useAuth } from "../../hooks/useAuth";
+import { ROLES } from "../../constants/permissions";
 
 const { Header: AntHeader } = Layout;
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout, roles } = useAuth();
   const [profile, setProfile] = useState({
     name: "Admin User",
     email: "",
@@ -33,10 +37,14 @@ const Header = () => {
     let mounted = true;
     (async () => {
       try {
-        const role = localStorage.getItem("userRole") || "SUPER_ADMIN";
+        const currentRole = roles[0] || "SUPER_ADMIN";
+        // Normalize role to string for comparison
+        const normalizedRole = typeof currentRole === "string" 
+          ? currentRole 
+          : currentRole?.code || currentRole?.roleCode || String(currentRole);
         let endpoint = ENDPOINTS.SUPER_ADMIN_PROFILE;
-        if (role === "ADMIN") endpoint = ENDPOINTS.STAFF_ADMIN_PROFILE;
-        else if (role === "SUB_ADMIN")
+        if (normalizedRole === ROLES.ADMIN) endpoint = ENDPOINTS.STAFF_ADMIN_PROFILE;
+        else if (normalizedRole === ROLES.SUB_ADMIN)
           endpoint = ENDPOINTS.STAFF_SUB_ADMIN_PROFILE;
         const resp = await apiClient.get(endpoint);
         if (!mounted) return;
@@ -48,14 +56,14 @@ const Header = () => {
             ? `${dto.firstName} ${dto.lastName}`
             : dto?.name || "Admin User";
         setProfile({ name, email: dto?.email || "", avatar });
-      } catch (e) {
+      } catch {
         // ignore fetch errors
       }
     })();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [roles]);
 
   // Generate breadcrumb items from current path
   const getBreadcrumbItems = () => {
@@ -77,29 +85,19 @@ const Header = () => {
 
   const onUserMenuClick = async ({ key }) => {
     if (key === "logout") {
-      try {
-        const role = localStorage.getItem("userRole") || "SUPER_ADMIN";
-        const endpoint =
-          role === "SUPER_ADMIN"
-            ? ENDPOINTS.SUPER_ADMIN_LOGOUT
-            : ENDPOINTS.STAFF_LOGOUT;
-        await apiClient.post(endpoint);
-      } catch {
-        // ignore network/logout API failures on client-side logout
-      } finally {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("refreshToken");
-        const role = localStorage.getItem("userRole") || "SUPER_ADMIN";
-        localStorage.removeItem("userRole");
-        localStorage.removeItem("userId");
-        message.success("Logged out");
-        navigate(role === "SUPER_ADMIN" ? "/login" : "/login-staff", {
-          replace: true,
-        });
-      }
+      await logout();
+      message.success("Logged out");
+      // Always redirect to unified login page
+      navigate("/login", {
+        replace: true,
+      });
     } else if (key === "profile") {
-      const role = localStorage.getItem("userRole") || "SUPER_ADMIN";
-      if (role === "SUPER_ADMIN") navigate("/settings/profile");
+      const currentRole = roles[0] || ROLES.SUPER_ADMIN;
+      // Normalize role to string for comparison
+      const normalizedRole = typeof currentRole === "string" 
+        ? currentRole 
+        : currentRole?.code || currentRole?.roleCode || String(currentRole);
+      if (normalizedRole === ROLES.SUPER_ADMIN) navigate("/settings/profile");
       else navigate("/settings/staff-profile");
     }
   };
@@ -145,9 +143,22 @@ const Header = () => {
         >
           <div className="flex items-center gap-2 cursor-pointer">
             <Avatar src={profile.avatar} icon={<UserOutlined />} />
-            <span className="text-gray-700 font-medium hidden sm:inline">
-              {profile.name}
-            </span>
+            <div className="hidden sm:flex sm:flex-col">
+              <span className="text-gray-700 font-medium">{profile.name}</span>
+              {roles.length > 0 && (
+                <div className="flex gap-1">
+                  {roles.map((role, index) => {
+                    // Handle both string and object roles
+                    const roleCode = typeof role === "string" ? role : role?.code || role?.roleCode || String(role);
+                    return (
+                      <Tag key={roleCode || index} color="blue" style={{ fontSize: "10px", margin: 0 }}>
+                        {roleCode}
+                      </Tag>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </Dropdown>
       </Space>

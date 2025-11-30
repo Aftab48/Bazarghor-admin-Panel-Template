@@ -12,6 +12,7 @@ export const ENDPOINTS = {
   SUPER_ADMIN_CHANGE_PASSWORD: (id) => `/admin/change-password/${id}`,
   SUPER_ADMIN_FORGET_PASSWORD: "/admin/forget-password",
   SUPER_ADMIN_RESET_PASSWORD: "/admin/reset-password",
+  ADMIN_PERMISSIONS: "/admin/permissions",
 
   // Staff (Admins & Sub-admins)
   STAFF_ADD_ADMIN: "/staff/add-admin",

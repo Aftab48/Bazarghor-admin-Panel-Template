@@ -4,6 +4,8 @@ import { Form, Input, Button, Typography, Card, message, Alert } from "antd";
 import apiClient from "../../services/api";
 import logo from "../../assets/images/Logo.png";
 import { ENDPOINTS } from "../../constants/endpoints";
+import { useAuth } from "../../hooks/useAuth";
+import { ROLES } from "../../constants/permissions";
 const { Title } = Typography;
 function AdminLogin() {
   const [loading, setLoading] = useState(false);
@@ -11,24 +13,25 @@ function AdminLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
+  
+  // Get auth context - will throw error if not in AuthProvider, but that's expected
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
+
   useEffect(() => {
-    const existing = localStorage.getItem("authToken");
-    if (existing) {
+    if (!authLoading && isAuthenticated) {
       navigate("/", { replace: true });
     }
-  }, [navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
   const onFinish = async (values) => {
     setLoading(true);
     try {
       setErrorMsg("");
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("userRole");
-      localStorage.removeItem("userId");
       // Super Admin only
       const response = await apiClient.post(ENDPOINTS.SUPER_ADMIN_LOGIN, {
         email: values.email,
         password: values.password,
       });
+      
       // Extract token
       let token =
         response?.data?.data?.token ||
@@ -56,17 +59,30 @@ function AdminLogin() {
         );
         return;
       }
-      localStorage.setItem("authToken", token);
-      if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
-      localStorage.setItem("userRole", "SUPER_ADMIN");
-      // Fetch super admin profile to store userId
+      
+      // Extract roles and permissions from response
+      const responseData = response?.data?.data || response?.data || response;
+      const userRoles = responseData?.roles || [ROLES.SUPER_ADMIN];
+      const userPermissions = responseData?.permissions || [];
+      
+      // Fetch super admin profile to get userId
+      let userId = null;
       try {
         const profResp = await apiClient.get(ENDPOINTS.SUPER_ADMIN_PROFILE);
         const raw = profResp?.data;
         const data = raw?.data || raw || profResp;
-        const id = data?.id || data?._id;
-        if (id) localStorage.setItem("userId", id);
+        userId = data?.id || data?._id;
       } catch {}
+      
+      // Use AuthContext login method
+      login({
+        token,
+        refreshToken,
+        roles: Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean),
+        permissions: Array.isArray(userPermissions) ? userPermissions : [],
+        user: userId ? { id: userId } : null,
+      });
+      
       message.success("Logged in successfully");
       navigate(from, { replace: true });
     } catch (err) {

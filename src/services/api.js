@@ -41,9 +41,20 @@ apiClient.interceptors.response.use(
     } else if (error.response) {
       const status = error.response.status;
       if (status === 401) {
+        // Clear auth state on 401
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("userRoles");
+        localStorage.removeItem("userPermissions");
+        localStorage.removeItem("userId");
+        localStorage.removeItem("userRole");
         message.error("Unauthorized. Please login again.");
+        // Redirect to login if not already there
+        if (window.location.pathname !== "/login" && window.location.pathname !== "/login-staff") {
+          window.location.href = "/login";
+        }
       } else if (status === 403) {
-        message.error("Access forbidden.");
+        message.error("Access forbidden. You don't have permission to perform this action.");
       } else if (status === 500) {
         message.error("Server error. Please try again later.");
       }
@@ -504,10 +515,16 @@ export const auditLogsAPI = {
 
 export default apiClient;
 
-// Auth API (logout)
+// Auth API (logout & permissions)
 export const authAPI = {
   logout: () =>
     apiCall(() => apiClient.post(ENDPOINTS.ADMIN_LOGOUT), { success: true }),
+  
+  getPermissions: () =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.ADMIN_PERMISSIONS),
+      { permissions: [] }
+    ),
 };
 
 // Staff Auth & Profile API
