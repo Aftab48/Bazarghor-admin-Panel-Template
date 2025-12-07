@@ -507,19 +507,13 @@ const DeliveryAgentManagement = () => {
   ];
 
   return (
-    <div
-      style={{
-        padding: "24px",
-        background: "#f0f0f0",
-        minHeight: "100vh",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div
         style={{
           background: "#ffffff",
-          padding: "24px",
+          padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          marginBottom: "24px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <div
@@ -547,7 +541,7 @@ const DeliveryAgentManagement = () => {
             prefix={<SearchOutlined />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: "100%", maxWidth: 360 }}
+            style={{ width: "100%", maxWidth: 380, minWidth: 220, flex: 1 }}
             size="large"
             allowClear
           />
@@ -557,8 +551,9 @@ const DeliveryAgentManagement = () => {
       <div
         style={{
           background: "#ffffff",
-          padding: "24px",
+          padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <Tabs

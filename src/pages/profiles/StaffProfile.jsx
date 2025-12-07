@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   Form,
@@ -18,10 +18,13 @@ import {
 } from "@ant-design/icons";
 import apiClient from "../../services/api";
 import { ENDPOINTS } from "../../constants/endpoints";
+import { useAuth } from "../../hooks/useAuth";
+import { ROLES } from "../../constants/permissions";
 
 const { Title, Text } = Typography;
 
 const StaffProfile = () => {
+  const { roles } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pwdSaving, setPwdSaving] = useState(false);
@@ -30,23 +33,16 @@ const StaffProfile = () => {
   const [form] = Form.useForm();
   const [pwdForm] = Form.useForm();
   const [staff, setStaff] = useState(null);
-  const role =
-    (typeof window !== "undefined" && localStorage.getItem("userRole")) ||
-    "ADMIN";
-  const [isSubAdmin, setIsSubAdmin] = useState(role === "SUB_ADMIN");
+  const isSubAdmin = useMemo(() => roles.includes(ROLES.SUB_ADMIN), [roles]);
 
   useEffect(() => {
     (async () => {
       try {
-        let resp;
-        // Prefer sub-admin endpoint first to avoid hitting admin by mistake
-        try {
-          resp = await apiClient.get(ENDPOINTS.STAFF_SUB_ADMIN_PROFILE);
-          setIsSubAdmin(true);
-        } catch {
-          resp = await apiClient.get(ENDPOINTS.STAFF_ADMIN_PROFILE);
-          setIsSubAdmin(false);
-        }
+        const profileEndpoint = isSubAdmin
+          ? ENDPOINTS.STAFF_SUB_ADMIN_PROFILE
+          : ENDPOINTS.STAFF_ADMIN_PROFILE;
+
+        const resp = await apiClient.get(profileEndpoint);
         const raw = resp?.data;
         const data = raw?.data || raw || resp;
         setStaff(data);
@@ -62,7 +58,7 @@ const StaffProfile = () => {
         setLoading(false);
       }
     })();
-  }, [form]);
+  }, [form, isSubAdmin]);
 
   const onSaveProfile = async (values) => {
     setSaving(true);
@@ -148,17 +144,12 @@ const StaffProfile = () => {
   };
 
   return (
-    <Space
-      direction="vertical"
-      style={{
-        width: "100%",
-        background: "#f0f0f0",
-        padding: "0 28px 28px 28px",
-        color: "#3c2f3d",
-      }}
-      size="large"
-    >
-      <Card loading={loading}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card
+        loading={loading}
+        style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.04)", borderRadius: 8 }}
+        bodyStyle={{ padding: "clamp(16px, 2vw, 24px)" }}
+      >
         <Space align="center" size={16} style={{ marginBottom: 16 }}>
           <div
             style={{
@@ -223,7 +214,11 @@ const StaffProfile = () => {
           </Button>
         </Form>
       </Card>
-      <Card title="Change Password">
+      <Card
+        title="Change Password"
+        style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.04)", borderRadius: 8 }}
+        bodyStyle={{ padding: "clamp(16px, 2vw, 24px)" }}
+      >
         <Form form={pwdForm} layout="vertical" onFinish={onChangePassword}>
           <Form.Item
             name="currentPassword"
@@ -302,7 +297,7 @@ const StaffProfile = () => {
           </Button>
         </Space>
       </Modal>
-    </Space>
+    </div>
   );
 };
 

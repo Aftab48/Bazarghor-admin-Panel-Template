@@ -70,25 +70,28 @@ export const AuthProvider = ({ children }) => {
   // Fetch permissions from backend if token exists
   useEffect(() => {
     const fetchPermissions = async () => {
-      if (token && !loading) {
-        try {
-          const response = await apiClient.get(ENDPOINTS.ADMIN_PERMISSIONS);
-          const data = response?.data?.data || response?.data || response;
-          if (data?.permissions && Array.isArray(data.permissions)) {
-            setPermissions(data.permissions);
-            localStorage.setItem("userPermissions", JSON.stringify(data.permissions));
-          }
-        } catch (error) {
-          console.error("Failed to fetch permissions:", error);
-          // Don't clear auth on permission fetch failure
+      // Only super admin should hit the admin permissions endpoint
+      const isSuperAdmin = roles.includes(ROLES.SUPER_ADMIN);
+      if (!token || loading || !isSuperAdmin) return;
+
+      try {
+        const response = await apiClient.get(ENDPOINTS.ADMIN_PERMISSIONS);
+        const data = response?.data?.data || response?.data || response;
+        if (data?.permissions && Array.isArray(data.permissions)) {
+          setPermissions(data.permissions);
+          localStorage.setItem(
+            "userPermissions",
+            JSON.stringify(data.permissions)
+          );
         }
+      } catch (error) {
+        console.error("Failed to fetch permissions:", error);
+        // Avoid clearing auth on permission fetch failure
       }
     };
 
-    if (token) {
-      fetchPermissions();
-    }
-  }, [token, loading]);
+    fetchPermissions();
+  }, [token, loading, roles]);
 
   // Login function
   const login = useCallback((loginData) => {
@@ -116,7 +119,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("refreshToken", newRefreshToken);
     }
     localStorage.setItem("userRoles", JSON.stringify(normalizedRoles));
-    localStorage.setItem("userPermissions", JSON.stringify(newPermissions || []));
+    localStorage.setItem(
+      "userPermissions",
+      JSON.stringify(newPermissions || [])
+    );
     if (userData?.id) {
       localStorage.setItem("userId", userData.id);
     }
@@ -128,9 +134,10 @@ export const AuthProvider = ({ children }) => {
       // Try to call logout endpoint
       const currentRole = roles[0] || localStorage.getItem("userRole");
       // Normalize role to string for comparison
-      const normalizedRole = typeof currentRole === "string" 
-        ? currentRole 
-        : currentRole?.code || currentRole?.roleCode || String(currentRole);
+      const normalizedRole =
+        typeof currentRole === "string"
+          ? currentRole
+          : currentRole?.code || currentRole?.roleCode || String(currentRole);
       const endpoint =
         normalizedRole === ROLES.SUPER_ADMIN
           ? ENDPOINTS.SUPER_ADMIN_LOGOUT
@@ -166,7 +173,10 @@ export const AuthProvider = ({ children }) => {
       const data = response?.data?.data || response?.data || response;
       if (data?.permissions && Array.isArray(data.permissions)) {
         setPermissions(data.permissions);
-        localStorage.setItem("userPermissions", JSON.stringify(data.permissions));
+        localStorage.setItem(
+          "userPermissions",
+          JSON.stringify(data.permissions)
+        );
         return data.permissions;
       }
     } catch (error) {
@@ -180,7 +190,10 @@ export const AuthProvider = ({ children }) => {
     (roleCode) => {
       if (!roleCode) return false;
       // Normalize roleCode to string
-      const normalizedRoleCode = typeof roleCode === "string" ? roleCode : roleCode?.code || String(roleCode);
+      const normalizedRoleCode =
+        typeof roleCode === "string"
+          ? roleCode
+          : roleCode?.code || String(roleCode);
       // SUPER_ADMIN has all roles implicitly
       if (roles.includes(ROLES.SUPER_ADMIN)) return true;
       return roles.includes(normalizedRoleCode);
@@ -202,7 +215,11 @@ export const AuthProvider = ({ children }) => {
   // Check if user has any of the given permissions
   const hasAnyPermission = useCallback(
     (permissionList) => {
-      if (!permissionList || !Array.isArray(permissionList) || permissionList.length === 0) {
+      if (
+        !permissionList ||
+        !Array.isArray(permissionList) ||
+        permissionList.length === 0
+      ) {
         return false;
       }
       // SUPER_ADMIN has all permissions
@@ -215,7 +232,11 @@ export const AuthProvider = ({ children }) => {
   // Check if user has all of the given permissions
   const hasAllPermissions = useCallback(
     (permissionList) => {
-      if (!permissionList || !Array.isArray(permissionList) || permissionList.length === 0) {
+      if (
+        !permissionList ||
+        !Array.isArray(permissionList) ||
+        permissionList.length === 0
+      ) {
         return false;
       }
       // SUPER_ADMIN has all permissions
@@ -244,4 +265,3 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

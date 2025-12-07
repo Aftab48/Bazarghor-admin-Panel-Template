@@ -9,10 +9,10 @@ import {
   Tag,
 } from "antd";
 import {
-  BellOutlined,
   UserOutlined,
   LogoutOutlined,
-  SettingOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from "@ant-design/icons";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import apiClient from "../../services/api";
@@ -23,7 +23,7 @@ import { ROLES } from "../../constants/permissions";
 
 const { Header: AntHeader } = Layout;
 
-const Header = () => {
+const Header = ({ onToggleSidebar, collapsed, isMobile }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, roles } = useAuth();
@@ -129,89 +129,124 @@ const Header = () => {
 
   return (
     <AntHeader
-      className="bg-white shadow-sm px-6 flex items-center justify-between"
-      style={{ padding: "0 24px", background: "#f0f0f0" }}
+      className="bg-white shadow-sm"
+      style={{
+        padding: isMobile ? "0 16px" : "0 24px",
+        display: "flex",
+        alignItems: "center",
+        minHeight: 64,
+        position: "sticky",
+        top: 0,
+        zIndex: 900,
+        background: "#ffffff",
+      }}
     >
-      <Breadcrumb items={getBreadcrumbItems()} />
+      <div className="flex items-center justify-between w-full flex-wrap gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            aria-label="Toggle navigation"
+            onClick={() => onToggleSidebar?.()}
+            style={{
+              border: "1px solid #e5e7eb",
+              background: "transparent",
+              cursor: "pointer",
+              padding: "8px",
+              borderRadius: "8px",
+              lineHeight: 0,
+            }}
+          >
+            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          </button>
 
-      <Space size="large">
-        {/* <Badge count={5} offset={[-5, 5]}>
+          <Breadcrumb
+            items={getBreadcrumbItems()}
+            style={{ flexWrap: "wrap", gap: 4 }}
+          />
+        </div>
+
+        <Space size="large" wrap align="center">
+          {/* <Badge count={5} offset={[-5, 5]}>
           <BellOutlined className="text-xl cursor-pointer text-gray-600 hover:text-blue-600" />
         </Badge> */}
 
-        <Dropdown
-          menu={{ items: userMenuItems, onClick: onUserMenuClick }}
-          placement="bottomRight"
-          arrow
-        >
-          <div
-            className="flex items-center gap-3 cursor-pointer"
-            style={{
-              padding: "8px 12px",
-              borderRadius: "8px",
-              transition: "background-color 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.04)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-            }}
+          <Dropdown
+            menu={{ items: userMenuItems, onClick: onUserMenuClick }}
+            placement="bottomRight"
+            arrow
           >
-            <Avatar
-              src={profile.avatar}
-              icon={<UserOutlined />}
-              size={40}
-              style={{ border: "2px solid #9dda52" }}
-            />
-            <div className="hidden sm:flex sm:flex-col" style={{ gap: "4px" }}>
-              <span
-                className="text-gray-800 font-semibold"
-                style={{ fontSize: "14px", lineHeight: "1.2" }}
+            <div
+              className="flex items-center gap-3 cursor-pointer"
+              style={{
+                padding: "8px 12px",
+                borderRadius: "8px",
+                transition: "background-color 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.04)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+            >
+              <Avatar
+                src={profile.avatar}
+                icon={<UserOutlined />}
+                size={40}
+                style={{ border: "2px solid #9dda52" }}
+              />
+              <div
+                className="hidden sm:flex sm:flex-col"
+                style={{ gap: "4px" }}
               >
-                {profile.name}
-              </span>
-              {roles.length > 0 && (
-                <div className="flex gap-1 flex-wrap">
-                  {roles.map((role, index) => {
-                    // Handle both string and object roles
-                    const roleCode =
-                      typeof role === "string"
-                        ? role
-                        : role?.code || role?.roleCode || String(role);
+                <span
+                  className="text-gray-800 font-semibold"
+                  style={{ fontSize: "14px", lineHeight: "1.2" }}
+                >
+                  {profile.name}
+                </span>
+                {roles.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {roles.map((role, index) => {
+                      // Handle both string and object roles
+                      const roleCode =
+                        typeof role === "string"
+                          ? role
+                          : role?.code || role?.roleCode || String(role);
 
-                    // Map role codes to display names
-                    const roleDisplayName = roleCode
-                      .split("_")
-                      .map(
-                        (word) => word.charAt(0) + word.slice(1).toLowerCase()
-                      )
-                      .join(" ");
+                      // Map role codes to display names
+                      const roleDisplayName = roleCode
+                        .split("_")
+                        .map(
+                          (word) => word.charAt(0) + word.slice(1).toLowerCase()
+                        )
+                        .join(" ");
 
-                    return (
-                      <Tag
-                        key={roleCode || index}
-                        color="processing"
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 500,
-                          margin: 0,
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                          border: "none",
-                          lineHeight: "1.4",
-                        }}
-                      >
-                        {roleDisplayName}
-                      </Tag>
-                    );
-                  })}
-                </div>
-              )}
+                      return (
+                        <Tag
+                          key={roleCode || index}
+                          color="processing"
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 500,
+                            margin: 0,
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            border: "none",
+                            lineHeight: "1.4",
+                          }}
+                        >
+                          {roleDisplayName}
+                        </Tag>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </Dropdown>
-      </Space>
+          </Dropdown>
+        </Space>
+      </div>
     </AntHeader>
   );
 };

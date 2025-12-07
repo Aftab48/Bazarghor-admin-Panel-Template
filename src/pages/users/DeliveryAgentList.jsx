@@ -11,7 +11,6 @@ import {
   Select,
   DatePicker,
   Switch,
-  Image,
 } from "antd";
 import {
   SearchOutlined,
@@ -41,13 +40,12 @@ const DeliveryAgentList = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [vehicleDetails, setVehicleDetails] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
   const [editForm] = Form.useForm();
-  const [submitting, setSubmitting] = useState(false);
   const { roles } = useAuth();
 
-  // Check if user can add delivery agents (SUPER_ADMIN or ADMIN only)
   const canAddAgent = () => {
     if (!roles || roles.length === 0) return false;
     const currentRole = roles[0];
@@ -71,17 +69,17 @@ const DeliveryAgentList = () => {
       const data = await deliveryPartnersAPI.getAll();
       if (Array.isArray(data)) {
         setAgents(data);
-        setPagination({ ...pagination, total: data.length });
+        setPagination((prev) => ({ ...prev, total: data.length }));
       } else {
         setAgents([]);
-        setPagination({ ...pagination, total: 0 });
+        setPagination((prev) => ({ ...prev, total: 0 }));
       }
     } catch (error) {
       message.error(
         `Failed to fetch delivery agents: ${error.message || "Unknown error"}`
       );
       setAgents([]);
-      setPagination({ ...pagination, total: 0 });
+      setPagination((prev) => ({ ...prev, total: 0 }));
     } finally {
       setLoading(false);
     }
@@ -204,7 +202,6 @@ const DeliveryAgentList = () => {
         );
       },
     },
-
     {
       title: "Phone",
       dataIndex: "phone",
@@ -238,7 +235,6 @@ const DeliveryAgentList = () => {
       ],
       onFilter: (value, record) => record.isActive === value,
     },
-
     {
       title: "Actions",
       key: "actions",
@@ -313,28 +309,21 @@ const DeliveryAgentList = () => {
   });
 
   return (
-    <div
-      style={{
-        padding: "clamp(16px, 2vw, 24px)",
-        background: "#f0f0f0",
-        minHeight: "100vh",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div
         style={{
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          marginBottom: "20px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <div
-          className="flex justify-between items-center mb-6"
+          className="flex justify-between items-start mb-6"
           style={{
             flexWrap: "wrap",
             gap: 12,
             rowGap: 12,
-            alignItems: "flex-start",
           }}
         >
           <h1
@@ -350,10 +339,11 @@ const DeliveryAgentList = () => {
           <div
             className="flex items-center gap-3"
             style={{
-              flexWrap: "nowrap",
+              flexWrap: "wrap",
               gap: 12,
               justifyContent: "flex-end",
-              flexShrink: 1,
+              flex: 1,
+              minWidth: 260,
             }}
           >
             <Input
@@ -361,7 +351,7 @@ const DeliveryAgentList = () => {
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: "100%", maxWidth: 320 }}
+              style={{ width: "100%", minWidth: 220, flex: 1, maxWidth: 360 }}
               size="large"
             />
             {canAddAgent() && (
@@ -372,6 +362,8 @@ const DeliveryAgentList = () => {
                 style={{
                   background: "#9dda52",
                   color: "#3c2f3d",
+                  width: "100%",
+                  maxWidth: 180,
                 }}
               >
                 Add Agent
@@ -386,6 +378,7 @@ const DeliveryAgentList = () => {
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <Table
@@ -399,7 +392,7 @@ const DeliveryAgentList = () => {
             showTotal: (total) => `Total ${total} delivery agents`,
           }}
           onChange={(newPagination) => setPagination(newPagination)}
-          locale={{ emptyText: "No delivery agents found" }}
+          locale={{ emptyText: "No agents found" }}
           scroll={{ x: 1000 }}
         />
       </div>
@@ -517,7 +510,6 @@ const DeliveryAgentList = () => {
         </Form>
       </Modal>
 
-      {/* Edit Modal */}
       <Modal
         title="Edit Delivery Agent"
         open={editModalVisible}
@@ -663,7 +655,6 @@ const DeliveryAgentList = () => {
         </Form>
       </Modal>
 
-      {/* View Modal */}
       <Modal
         title="Delivery Agent Details"
         open={viewModalVisible}

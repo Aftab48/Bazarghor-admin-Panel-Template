@@ -152,28 +152,23 @@ const RolesPermissions = () => {
   ];
 
   return (
-    <div
-      style={{
-        padding: "clamp(16px, 2vw, 24px)",
-        background: "#f0f0f0",
-        minHeight: "100vh",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div
         style={{
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          marginBottom: "20px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <div
-          className="flex justify-between items-center mb-6"
           style={{
-            flexWrap: "wrap",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
             gap: 12,
             rowGap: 12,
-            alignItems: "flex-start",
+            flexWrap: "wrap",
           }}
         >
           <h1
@@ -187,12 +182,13 @@ const RolesPermissions = () => {
             Roles & Permissions
           </h1>
           <div
-            className="flex items-center gap-3"
             style={{
-              flexWrap: "nowrap",
+              display: "flex",
               gap: 12,
+              flexWrap: "wrap",
               justifyContent: "flex-end",
-              flexShrink: 1,
+              flex: 1,
+              minWidth: 220,
             }}
           >
             <Input
@@ -200,7 +196,7 @@ const RolesPermissions = () => {
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: "100%", maxWidth: 320 }}
+              style={{ width: "100%", maxWidth: 340, flex: 1, minWidth: 200 }}
               size="large"
               allowClear
             />
@@ -221,6 +217,7 @@ const RolesPermissions = () => {
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <Table

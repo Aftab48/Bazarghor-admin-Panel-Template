@@ -621,50 +621,53 @@ const VendorManagement = () => {
   ];
 
   return (
-    <div
-      style={{
-        padding: "24px",
-        background: "#f0f0f0",
-        minHeight: "100vh",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div
         style={{
           background: "#ffffff",
-          padding: "24px",
+          padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          marginBottom: "24px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
-        <h1
+        <div
           style={{
-            fontSize: "24px",
-            fontWeight: "bold",
-            color: "#3c2f3d",
-            margin: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            rowGap: 12,
+            flexWrap: "wrap",
           }}
         >
-          Store Management
-        </h1>
-        <Input
-          placeholder="Search vendors..."
-          prefix={<SearchOutlined />}
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          style={{ maxWidth: 360, borderRadius: 8, height: 38 }}
-          size="middle"
-          allowClear
-        />
+          <h1
+            style={{
+              fontSize: "24px",
+              fontWeight: "bold",
+              color: "#3c2f3d",
+              margin: 0,
+            }}
+          >
+            Store Management
+          </h1>
+          <Input
+            placeholder="Search vendors..."
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: "100%", maxWidth: 380, minWidth: 220, flex: 1 }}
+            size="large"
+            allowClear
+          />
+        </div>
       </div>
 
       <div
         style={{
           background: "#ffffff",
-          padding: "24px",
+          padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <Tabs

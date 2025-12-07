@@ -179,24 +179,24 @@ const Categories = () => {
   ];
 
   return (
-    <div
-      style={{
-        padding: "clamp(16px, 2vw, 24px)",
-        background: "#f0f0f0",
-        minHeight: "100vh",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div
         style={{
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          marginBottom: "20px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <div
-          className="flex flex-wrap gap-3 justify-between items-center"
-          style={{ gap: 12, rowGap: 12, alignItems: "flex-start" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            rowGap: 12,
+            flexWrap: "wrap",
+          }}
         >
           <h1
             style={{
@@ -208,14 +208,18 @@ const Categories = () => {
           >
             Categories
           </h1>
-          <Space className="flex flex-wrap gap-3" size="middle">
+          <Space
+            className="flex flex-wrap gap-3"
+            size="middle"
+            style={{ justifyContent: "flex-end", flex: 1, minWidth: 220 }}
+          >
             <Input
               allowClear
               placeholder="Search categories..."
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: "100%", maxWidth: 320 }}
+              style={{ width: "100%", maxWidth: 340, flex: 1, minWidth: 200 }}
               size="large"
             />
             <Button
@@ -239,6 +243,7 @@ const Categories = () => {
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <Table

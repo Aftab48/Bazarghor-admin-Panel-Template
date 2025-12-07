@@ -320,28 +320,21 @@ const CustomerList = () => {
   });
 
   return (
-    <div
-      style={{
-        padding: "clamp(16px, 2vw, 24px)",
-        background: "#f0f0f0",
-        minHeight: "100vh",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div
         style={{
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          marginBottom: "20px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <div
-          className="flex justify-between items-center mb-6"
+          className="flex justify-between items-start mb-6"
           style={{
             flexWrap: "wrap",
             gap: 12,
             rowGap: 12,
-            alignItems: "flex-start",
           }}
         >
           <h1
@@ -357,10 +350,11 @@ const CustomerList = () => {
           <div
             className="flex items-center gap-3"
             style={{
-              flexWrap: "nowrap",
+              flexWrap: "wrap",
               gap: 12,
               justifyContent: "flex-end",
-              flexShrink: 1,
+              flex: 1,
+              minWidth: 260,
             }}
           >
             <Input
@@ -368,7 +362,7 @@ const CustomerList = () => {
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: "100%", maxWidth: 320 }}
+              style={{ width: "100%", minWidth: 220, flex: 1, maxWidth: 360 }}
               size="large"
             />
             {canAddCustomer() && (
@@ -379,6 +373,8 @@ const CustomerList = () => {
                 style={{
                   background: "#9dda52",
                   color: "#3c2f3d",
+                  width: "100%",
+                  maxWidth: 180,
                 }}
               >
                 Add Customer
@@ -393,6 +389,7 @@ const CustomerList = () => {
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <Table

@@ -13,6 +13,7 @@ import RequirePermission from "./components/layout/RequirePermission";
 import Login from "./pages/login/Login";
 import ForgotPassword from "./pages/login/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
+import "./App.css";
 import UserManagement from "./pages/users/UserManagement";
 import CustomerList from "./pages/users/CustomerList";
 import VendorList from "./pages/users/VendorList";

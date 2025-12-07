@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { Layout, Menu } from "antd";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../../assets/images/Logo.png";
@@ -23,11 +23,10 @@ import "./Sidebar.css";
 
 const { Sider } = Layout;
 
-const Sidebar = () => {
+const Sidebar = ({ collapsed, onCollapse, onBreakpoint, isMobile }) => {
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
   const { isAuthenticated } = useAuth();
-  const { hasPermission, hasAnyPermission, canAccessRoute } = usePermissions();
+  const { hasPermission } = usePermissions();
 
   // Filter menu items based on permissions
   const menuItems = useMemo(() => {
@@ -246,13 +245,19 @@ const Sidebar = () => {
     return openKeys;
   };
 
+  const handleMenuClick = () => {
+    if (isMobile && !collapsed) onCollapse(true);
+  };
+
   return (
     <Sider
       collapsible
       collapsed={collapsed}
-      onCollapse={setCollapsed}
-      breakpoint="md"
-      collapsedWidth={0}
+      onCollapse={onCollapse}
+      onBreakpoint={onBreakpoint}
+      breakpoint="lg"
+      collapsedWidth={isMobile ? 0 : 80}
+      trigger={null}
       className="custom-sidebar"
       width={250}
       theme="light"
@@ -263,6 +268,12 @@ const Sidebar = () => {
         left: 0,
         top: 0,
         bottom: 0,
+        zIndex: 1001,
+        boxShadow: "0 8px 24px rgba(0, 0, 0, 0.08)",
+        transform:
+          isMobile && collapsed ? "translateX(-100%)" : "translateX(0)",
+        willChange: "transform, width",
+        transition: "transform 0.25s ease, width 0.2s ease",
       }}
     >
       <div
@@ -289,7 +300,9 @@ const Sidebar = () => {
         selectedKeys={[getSelectedKey()]}
         defaultOpenKeys={getOpenKeys()}
         items={menuItems}
+        inlineCollapsed={!isMobile && collapsed}
         className="custom-sidebar-menu border-r-0"
+        onClick={handleMenuClick}
       />
     </Sider>
   );

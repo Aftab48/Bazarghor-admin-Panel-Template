@@ -19,10 +19,10 @@ const SettingsManagement = () => {
       key: "staff",
       title: "Staff",
       description: "Manage admins and sub-admins",
-      icon: <TeamOutlined style={{ fontSize: 48, color: "#1890ff" }} />,
+      icon: <TeamOutlined style={{ fontSize: 48, color: "#ffbc2c " }} />,
       path: "/settings/staff",
       permission: [PERMISSIONS.VIEW_ADMINS, PERMISSIONS.CREATE_SUB_ADMIN],
-      color: "#1890ff",
+      color: "#ffbc2c",
     },
     {
       key: "roles",

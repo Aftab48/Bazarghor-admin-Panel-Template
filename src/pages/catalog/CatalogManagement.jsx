@@ -19,10 +19,10 @@ const CatalogManagement = () => {
       key: "categories",
       title: "Categories",
       description: "Create and organize product categories",
-      icon: <AppstoreOutlined style={{ fontSize: 48, color: "#1890ff" }} />,
+      icon: <AppstoreOutlined style={{ fontSize: 48, color: "#ffbc2c " }} />,
       path: "/catalog/categories",
       permission: PERMISSIONS.VIEW_PRODUCTS,
-      color: "#1890ff",
+      color: "#ffbc2c",
     },
     {
       key: "products",
