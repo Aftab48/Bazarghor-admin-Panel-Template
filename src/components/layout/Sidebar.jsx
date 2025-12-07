@@ -19,6 +19,7 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { usePermissions } from "../../hooks/usePermissions";
 import { PERMISSIONS } from "../../constants/permissions";
+import "./Sidebar.css";
 
 const { Sider } = Layout;
 
@@ -64,7 +65,7 @@ const Sidebar = () => {
       if (hasPermission(PERMISSIONS.VIEW_DELIVERY_PARTNERS)) {
         userChildren.push({
           key: "/users/delivery-agents",
-          label: <Link to="/users/delivery-agents">Delivery Agents</Link>,
+          label: <Link to="/users/delivery-agents">Delivery Partners</Link>,
         });
       }
 
@@ -72,7 +73,7 @@ const Sidebar = () => {
         items.push({
           key: "/users",
           icon: <UserOutlined />,
-          label: "User Management",
+          label: <Link to="/users">User Management</Link>,
           children: userChildren,
         });
       }
@@ -83,7 +84,7 @@ const Sidebar = () => {
       items.push({
         key: "/vendor-management",
         icon: <ShopOutlined />,
-        label: <Link to="/vendor-management">Vendor Management</Link>,
+        label: <Link to="/vendor-management">Store Management</Link>,
       });
     }
 
@@ -101,7 +102,7 @@ const Sidebar = () => {
       items.push({
         key: "/catalog",
         icon: <AppstoreOutlined />,
-        label: "Catalog",
+        label: <Link to="/catalog">Catalog</Link>,
         children: [
           {
             key: "/catalog/categories",
@@ -183,7 +184,7 @@ const Sidebar = () => {
       items.push({
         key: "/settings",
         icon: <SettingOutlined />,
-        label: "Settings",
+        label: <Link to="/settings">Settings</Link>,
         children: settingsChildren,
       });
     }
@@ -250,7 +251,9 @@ const Sidebar = () => {
       collapsible
       collapsed={collapsed}
       onCollapse={setCollapsed}
-      className="min-h-screen"
+      breakpoint="md"
+      collapsedWidth={0}
+      className="custom-sidebar"
       width={250}
       theme="light"
       style={{
@@ -286,7 +289,7 @@ const Sidebar = () => {
         selectedKeys={[getSelectedKey()]}
         defaultOpenKeys={getOpenKeys()}
         items={menuItems}
-        className="border-r-0"
+        className="custom-sidebar-menu border-r-0"
       />
     </Sider>
   );

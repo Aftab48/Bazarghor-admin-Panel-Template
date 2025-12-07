@@ -34,6 +34,7 @@ export const ENDPOINTS = {
     `/staff/sub-admin-change-password/${id}`,
   DASHBOARD_STATS: "/dashboard/stats",
   DASHBOARD_ANALYTICS: "/dashboard/analytics",
+  USERS_VERIFY_STATUS: (userId) => `/users/verify-status/${userId}`,
 
   // User Management - Customers
   USERS_GET_CUSTOMER_LIST: "/users/get-customer-list",
@@ -41,7 +42,6 @@ export const ENDPOINTS = {
   USERS_CREATE_CUSTOMER: "/users/create-customer",
   USERS_UPDATE_CUSTOMER: (id) => `/users/update-customer/${id}`,
   USERS_DELETE_CUSTOMER: (id) => `/users/delete-customer/${id}`,
-  USERS_VERIFY_STATUS: (userId) => `/users/verify-status/${userId}`,
 
   // User Management - Vendors
   USERS_GET_VENDOR_LIST: "/users/get-vendor-list",
@@ -63,7 +63,7 @@ export const ENDPOINTS = {
   PRODUCTS_ADMIN_GET_BY_ID: (id) => `/products/admin/get-product/${id}`,
   PRODUCTS_ADMIN_UPDATE: (id) => `/products/admin/update-product/${id}`,
   PRODUCTS_ADMIN_DELETE: (id) => `/products/admin/delete-product/${id}`,
-  
+
   // Products - Categories
   PRODUCTS_CATEGORIES_LIST: "/products/categories/list",
 
@@ -80,23 +80,35 @@ export const ENDPOINTS = {
   // Vendor Subscriptions - Admin
   ADMIN_VENDOR_SUBSCRIPTION_CREATE: "/admin/vendor-subscription",
   ADMIN_VENDOR_SUBSCRIPTION_GET_ALL: "/admin/vendor-subscription",
-  ADMIN_VENDOR_SUBSCRIPTION_GET_BY_ID: (id) => `/admin/vendor-subscription/${id}`,
-  ADMIN_VENDOR_SUBSCRIPTION_ASSIGN: (subscriptionId) => `/admin/vendor-subscription/${subscriptionId}/assign`,
-  ADMIN_VENDOR_SUBSCRIPTION_RENEW: (id) => `/admin/vendor-subscription/${id}/renew`,
-  ADMIN_VENDOR_SUBSCRIPTION_UPGRADE: (id) => `/admin/vendor-subscription/${id}/upgrade`,
-  ADMIN_VENDOR_SUBSCRIPTION_CANCEL: (id) => `/admin/cancel-vendor-subscription/${id}`,
+  ADMIN_VENDOR_SUBSCRIPTION_GET_BY_ID: (id) =>
+    `/admin/vendor-subscription/${id}`,
+  ADMIN_VENDOR_SUBSCRIPTION_ASSIGN: (subscriptionId) =>
+    `/admin/vendor-subscription/${subscriptionId}/assign`,
+  ADMIN_VENDOR_SUBSCRIPTION_RENEW: (id) =>
+    `/admin/vendor-subscription/${id}/renew`,
+  ADMIN_VENDOR_SUBSCRIPTION_UPGRADE: (id) =>
+    `/admin/vendor-subscription/${id}/upgrade`,
+  ADMIN_VENDOR_SUBSCRIPTION_CANCEL: (id) =>
+    `/admin/cancel-vendor-subscription/${id}`,
 
   // Customer Subscriptions - Admin
-  ADMIN_CUSTOMER_SUBSCRIPTION_GET: (customerId) => `/admin/customer-subscription/${customerId}`,
-  ADMIN_CUSTOMER_SUBSCRIPTION_PURCHASE: (customerId) => `/admin/customer-subscription/${customerId}/purchase`,
-  ADMIN_CUSTOMER_SUBSCRIPTION_RENEW: (customerId) => `/admin/customer-subscription/${customerId}/renew`,
-  ADMIN_CUSTOMER_SUBSCRIPTION_CANCEL: (customerId) => `/admin/customer-subscription/${customerId}/cancel`,
-  ADMIN_CUSTOMER_SUBSCRIPTION_UPGRADE: (customerId) => `/admin/customer-subscription/${customerId}/upgrade`,
+  ADMIN_CUSTOMER_SUBSCRIPTION_GET: (customerId) =>
+    `/admin/customer-subscription/${customerId}`,
+  ADMIN_CUSTOMER_SUBSCRIPTION_PURCHASE: (customerId) =>
+    `/admin/customer-subscription/${customerId}/purchase`,
+  ADMIN_CUSTOMER_SUBSCRIPTION_RENEW: (customerId) =>
+    `/admin/customer-subscription/${customerId}/renew`,
+  ADMIN_CUSTOMER_SUBSCRIPTION_CANCEL: (customerId) =>
+    `/admin/customer-subscription/${customerId}/cancel`,
+  ADMIN_CUSTOMER_SUBSCRIPTION_UPGRADE: (customerId) =>
+    `/admin/customer-subscription/${customerId}/upgrade`,
 
   // Roles & Permissions
   ADMIN_ROLES_GET: "/admin/roles-permissions/roles",
-  ADMIN_ROLES_UPDATE_PERMISSIONS: (code) => `/admin/roles-permissions/roles/${code}/permissions`,
-  ADMIN_ROLES_BULK_UPDATE_PERMISSIONS: "/admin/roles-permissions/roles/bulk/permissions",
+  ADMIN_ROLES_UPDATE_PERMISSIONS: (code) =>
+    `/admin/roles-permissions/roles/${code}/permissions`,
+  ADMIN_ROLES_BULK_UPDATE_PERMISSIONS:
+    "/admin/roles-permissions/roles/bulk/permissions",
 
   // Vendor Analytics
   VENDOR_ANALYTICS_BASIC: "/vendor-analytics/analytics/basic",
@@ -107,13 +119,4 @@ export const ENDPOINTS = {
   MAP_PLS_AUTOSUGGEST: "/map-pls/places/autosuggest",
   MAP_PLS_GEOCODE: "/map-pls/places/geocode",
   MAP_PLS_REVERSE_GEOCODE: "/map-pls/places/reverse-geocode",
-
-  // Legacy endpoints (for backward compatibility)
-  CUSTOMERS: "/users/get-customer-list",
-  VENDORS: "/users/get-vendor-list",
-  DELIVERY_AGENTS: "/users/get-delivery-partner-list",
-  CATEGORIES: "/products/categories/list",
-  PRODUCTS: "/products/admin/get-products-list",
-  ORDERS: "/admin/orders",
-  ROLES: "/admin/roles-permissions/roles",
 };

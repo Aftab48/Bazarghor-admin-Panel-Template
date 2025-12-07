@@ -43,7 +43,7 @@ const StaffProfile = () => {
         try {
           resp = await apiClient.get(ENDPOINTS.STAFF_SUB_ADMIN_PROFILE);
           setIsSubAdmin(true);
-        } catch (e1) {
+        } catch {
           resp = await apiClient.get(ENDPOINTS.STAFF_ADMIN_PROFILE);
           setIsSubAdmin(false);
         }
@@ -57,7 +57,7 @@ const StaffProfile = () => {
           mobNo: data?.mobNo || "",
         });
       } catch (e) {
-        message.error("Failed to load profile");
+        message.error(e?.response?.data?.message || "Failed to load profile");
       } finally {
         setLoading(false);
       }

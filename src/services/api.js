@@ -50,11 +50,16 @@ apiClient.interceptors.response.use(
         localStorage.removeItem("userRole");
         message.error("Unauthorized. Please login again.");
         // Redirect to login if not already there
-        if (window.location.pathname !== "/login" && window.location.pathname !== "/login-staff") {
+        if (
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/login-staff"
+        ) {
           window.location.href = "/login";
         }
       } else if (status === 403) {
-        message.error("Access forbidden. You don't have permission to perform this action.");
+        message.error(
+          "Access forbidden. You don't have permission to perform this action."
+        );
       } else if (status === 500) {
         message.error("Server error. Please try again later.");
       }
@@ -91,31 +96,40 @@ const transformVendorData = (stores) => {
       const vendor = store.vendorId || {};
       const vendorId = vendor._id || vendor.id;
       const storeId = store._id || store.id;
-      
+
       // Handle profile picture - could be object with uri or string
       const profilePic = vendor.profilePicture;
-      const profilePicUri = typeof profilePic === 'object' ? profilePic?.uri : profilePic;
-      
+      const profilePicUri =
+        typeof profilePic === "object" ? profilePic?.uri : profilePic;
+
       // Handle store pictures - array of file objects
-      const storePic = Array.isArray(store.storePictures) && store.storePictures.length > 0
-        ? store.storePictures[0]
-        : null;
-      const storePicUri = typeof storePic === 'object' ? storePic?.uri : storePic;
-      
+      const storePic =
+        Array.isArray(store.storePictures) && store.storePictures.length > 0
+          ? store.storePictures[0]
+          : null;
+      const storePicUri =
+        typeof storePic === "object" ? storePic?.uri : storePic;
+
       return {
         id: vendorId || storeId,
         _id: vendorId || storeId,
-        businessName: store.storeName || vendor.storeName || 'N/A',
+        businessName: store.storeName || vendor.storeName || "N/A",
         storeName: store.storeName,
-        ownerName: `${vendor.firstName || ''} ${vendor.lastName || ''}`.trim() || 'N/A',
+        ownerName:
+          `${vendor.firstName || ""} ${vendor.lastName || ""}`.trim() || "N/A",
         firstName: vendor.firstName,
         lastName: vendor.lastName,
-        email: vendor.email || store.email || '',
-        phone: vendor.mobNo || store.contactNumber || '',
+        email: vendor.email || store.email || "",
+        phone: vendor.mobNo || store.contactNumber || "",
         mobNo: vendor.mobNo,
-        address: store.storeAddress || '',
+        address: store.storeAddress || "",
         storeAddress: store.storeAddress,
-        status: vendor.status !== undefined ? vendor.status : (store.storeStatus !== undefined ? store.storeStatus : 1),
+        status:
+          vendor.status !== undefined
+            ? vendor.status
+            : store.storeStatus !== undefined
+            ? store.storeStatus
+            : 1,
         isActive: vendor.isActive !== undefined ? vendor.isActive : true,
         profilePicture: profilePic,
         logo: storePicUri || profilePicUri,
@@ -126,7 +140,8 @@ const transformVendorData = (stores) => {
         totalSales: store.totalSales || 0,
         productsCount: store.productsCount || 0,
         rating: store.rating || 0,
-        joinedDate: store.createdAt || store.joinedDate || new Date().toISOString(),
+        joinedDate:
+          store.createdAt || store.joinedDate || new Date().toISOString(),
         // Keep all original fields
         ...store,
         // Override with vendor data where applicable
@@ -177,23 +192,27 @@ export const customersAPI = {
       return mockData.customers;
     }
     try {
-      const response = await apiClient.get(ENDPOINTS.USERS_GET_CUSTOMER_LIST, { params });
+      const response = await apiClient.get(ENDPOINTS.USERS_GET_CUSTOMER_LIST, {
+        params,
+      });
       const customers = extractResponseData(response);
       // Transform customer data to match frontend format
-      return Array.isArray(customers) ? customers.map(c => ({
-        id: c._id || c.id,
-        _id: c._id,
-        name: `${c.firstName || ''} ${c.lastName || ''}`.trim(),
-        firstName: c.firstName,
-        lastName: c.lastName,
-        email: c.email,
-        phone: c.mobNo,
-        mobNo: c.mobNo,
-        status: c.status,
-        isActive: c.isActive,
-        profilePicture: c.profilePicture,
-        ...c,
-      })) : [];
+      return Array.isArray(customers)
+        ? customers.map((c) => ({
+            id: c._id || c.id,
+            _id: c._id,
+            name: `${c.firstName || ""} ${c.lastName || ""}`.trim(),
+            firstName: c.firstName,
+            lastName: c.lastName,
+            email: c.email,
+            phone: c.mobNo,
+            mobNo: c.mobNo,
+            status: c.status,
+            isActive: c.isActive,
+            profilePicture: c.profilePicture,
+            ...c,
+          }))
+        : [];
     } catch (error) {
       console.warn("⚠️ Failed to fetch customers, using mock data", error);
       return mockData.customers;
@@ -210,7 +229,7 @@ export const customersAPI = {
       return {
         id: customer._id || customer.id,
         _id: customer._id,
-        name: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
+        name: `${customer.firstName || ""} ${customer.lastName || ""}`.trim(),
         firstName: customer.firstName,
         lastName: customer.lastName,
         email: customer.email,
@@ -245,17 +264,19 @@ export const customersAPI = {
       { success: true, message: "Customer updated successfully" }
     ),
 
-  delete: (id) =>
-    apiCall(
-      () => apiClient.delete(ENDPOINTS.USERS_DELETE_CUSTOMER(id)),
-      { success: true, message: "Customer deleted successfully" }
-    ),
+  deleteCustomer: (id) =>
+    apiCall(() => apiClient.delete(ENDPOINTS.USERS_DELETE_CUSTOMER(id)), {
+      success: true,
+      message: "Customer deleted successfully",
+    }),
+};
 
+export const approvalsAPI = {
   verifyStatus: (userId, data) =>
-    apiCall(
-      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data),
-      { success: true, message: "Status updated successfully" }
-    ),
+    apiCall(() => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data), {
+      success: true,
+      message: "Status updated successfully",
+    }),
 };
 
 // Users API - Vendors
@@ -266,17 +287,13 @@ export const vendorsAPI = {
       return mockData.vendors.filter((v) => v.status !== "pending");
     }
     try {
-      const response = await apiClient.get(ENDPOINTS.USERS_GET_VENDOR_LIST, { params });
-      console.log("📦 Raw vendor response:", response?.data);
+      const response = await apiClient.get(ENDPOINTS.USERS_GET_VENDOR_LIST, {
+        params,
+      });
       const stores = extractResponseData(response);
-      console.log("📦 Extracted stores:", stores);
-      // Transform store data to vendor format
       const transformed = transformVendorData(stores);
-      console.log("📦 Transformed vendors:", transformed);
       return transformed;
     } catch (error) {
-      console.error("❌ Failed to fetch vendors:", error);
-      console.warn("⚠️ Using mock data as fallback");
       return mockData.vendors.filter((v) => v.status !== "pending");
     }
   },
@@ -316,16 +333,16 @@ export const vendorsAPI = {
     ),
 
   delete: (id) =>
-    apiCall(
-      () => apiClient.delete(ENDPOINTS.USERS_DELETE_VENDOR(id)),
-      { success: true, message: "Vendor deleted successfully" }
-    ),
+    apiCall(() => apiClient.delete(ENDPOINTS.USERS_DELETE_VENDOR(id)), {
+      success: true,
+      message: "Vendor deleted successfully",
+    }),
 
   verifyStatus: (userId, data) =>
-    apiCall(
-      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data),
-      { success: true, message: "Status updated successfully" }
-    ),
+    apiCall(() => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data), {
+      success: true,
+      message: "Status updated successfully",
+    }),
 
   // Legacy approval methods (for backward compatibility)
   // Note: Backend doesn't have /api/vendors/pending endpoint
@@ -333,29 +350,32 @@ export const vendorsAPI = {
   // Backend uses: 1 = PENDING, 2 = APPROVED
   getPendingApprovals: async () => {
     if (USE_MOCK_DATA) {
-      return mockData.vendors.filter((v) => v.status === "pending" || v.status === 1);
+      return mockData.vendors.filter(
+        (v) => v.status === "pending" || v.status === 1
+      );
     }
     // Fetch all vendors and filter by pending status (1 or "pending")
     try {
       const vendors = await vendorsAPI.getAll();
       if (!Array.isArray(vendors)) return [];
-      return vendors.filter((v) => 
-        v.status === 1 || 
-        v.status === "pending" || 
-        v.status === "PENDING" ||
-        (typeof v.status === "string" && v.status.toLowerCase() === "pending")
+      return vendors.filter(
+        (v) =>
+          v.status === 1 ||
+          v.status === "pending" ||
+          v.status === "PENDING" ||
+          (typeof v.status === "string" && v.status.toLowerCase() === "pending")
       );
     } catch (error) {
       console.warn("⚠️ Failed to fetch pending vendors", error);
-      return mockData.vendors.filter((v) => v.status === "pending" || v.status === 1);
+      return mockData.vendors.filter(
+        (v) => v.status === "pending" || v.status === 1
+      );
     }
   },
 
-  approveVendor: (id) =>
-    vendorsAPI.verifyStatus(id, { status: 2 }), // 2 = APPROVED
+  approveVendor: (id) => vendorsAPI.verifyStatus(id, { status: 2 }), // 2 = APPROVED
 
-  rejectVendor: (id) =>
-    vendorsAPI.verifyStatus(id, { status: 1 }), // Set back to PENDING or use a rejected status
+  rejectVendor: (id) => vendorsAPI.verifyStatus(id, { status: 1 }), // Set back to PENDING or use a rejected status
 
   getVendorDetails: (id) =>
     apiCall(
@@ -365,13 +385,17 @@ export const vendorsAPI = {
 
   suspendVendor: (id) =>
     apiCall(
-      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(id), { status: "suspended" }),
+      () =>
+        apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(id), {
+          status: "suspended",
+        }),
       { success: true, message: "Vendor suspended successfully" }
     ),
 
   unsuspendVendor: (id) =>
     apiCall(
-      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(id), { status: "active" }),
+      () =>
+        apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(id), { status: "active" }),
       { success: true, message: "Vendor unsuspended successfully" }
     ),
 };
@@ -384,28 +408,36 @@ export const deliveryPartnersAPI = {
       return mockData.deliveryAgents.filter((a) => a.status !== "pending");
     }
     try {
-      const response = await apiClient.get(ENDPOINTS.USERS_GET_DELIVERY_PARTNER_LIST, { params });
+      const response = await apiClient.get(
+        ENDPOINTS.USERS_GET_DELIVERY_PARTNER_LIST,
+        { params }
+      );
       const partners = extractResponseData(response);
       // Transform delivery partner data to match frontend format
-      return Array.isArray(partners) ? partners.map(p => ({
-        id: p._id || p.id,
-        _id: p._id,
-        name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-        firstName: p.firstName,
-        lastName: p.lastName,
-        email: p.email,
-        phone: p.mobNo,
-        mobNo: p.mobNo,
-        status: p.status,
-        isActive: p.isActive,
-        profilePicture: p.profilePicture,
-        vehicleType: p.vehicleDetails?.vehicleType,
-        vehicleDetails: p.vehicleDetails,
-        avatar: p.profilePicture?.uri || p.profilePicture,
-        ...p,
-      })) : [];
+      return Array.isArray(partners)
+        ? partners.map((p) => ({
+            id: p._id || p.id,
+            _id: p._id,
+            name: `${p.firstName || ""} ${p.lastName || ""}`.trim(),
+            firstName: p.firstName,
+            lastName: p.lastName,
+            email: p.email,
+            phone: p.mobNo,
+            mobNo: p.mobNo,
+            status: p.status,
+            isActive: p.isActive,
+            profilePicture: p.profilePicture,
+            vehicleType: p.vehicleDetails?.vehicleType,
+            vehicleDetails: p.vehicleDetails,
+            avatar: p.profilePicture?.uri || p.profilePicture,
+            ...p,
+          }))
+        : [];
     } catch (error) {
-      console.warn("⚠️ Failed to fetch delivery partners, using mock data", error);
+      console.warn(
+        "⚠️ Failed to fetch delivery partners, using mock data",
+        error
+      );
       return mockData.deliveryAgents.filter((a) => a.status !== "pending");
     }
   },
@@ -415,12 +447,14 @@ export const deliveryPartnersAPI = {
       return mockData.deliveryAgents.find((a) => a.id === parseInt(id));
     }
     try {
-      const response = await apiClient.get(ENDPOINTS.USERS_GET_DELIVERY_PARTNER(id));
+      const response = await apiClient.get(
+        ENDPOINTS.USERS_GET_DELIVERY_PARTNER(id)
+      );
       const partner = extractResponseData(response);
       return {
         id: partner._id || partner.id,
         _id: partner._id,
-        name: `${partner.firstName || ''} ${partner.lastName || ''}`.trim(),
+        name: `${partner.firstName || ""} ${partner.lastName || ""}`.trim(),
         firstName: partner.firstName,
         lastName: partner.lastName,
         email: partner.email,
@@ -429,13 +463,16 @@ export const deliveryPartnersAPI = {
         status: partner.status,
         isActive: partner.isActive,
         profilePicture: partner.profilePicture,
-        vehicleType: partner.vehicleDetails?.vehicleType,
+        vehicleType: partner.vehicleDetails,
         vehicleDetails: partner.vehicleDetails,
         avatar: partner.profilePicture?.uri || partner.profilePicture,
         ...partner,
       };
     } catch (error) {
-      console.warn("⚠️ Failed to fetch delivery partner, using mock data", error);
+      console.warn(
+        "⚠️ Failed to fetch delivery partner, using mock data",
+        error
+      );
       return mockData.deliveryAgents.find((a) => a.id === parseInt(id));
     }
   },
@@ -465,81 +502,13 @@ export const deliveryPartnersAPI = {
     ),
 
   verifyStatus: (userId, data) =>
-    apiCall(
-      () => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data),
-      { success: true, message: "Status updated successfully" }
-    ),
-};
-
-// Legacy Users API (for backward compatibility)
-export const usersAPI = {
-  getCustomers: (params) => customersAPI.getAll(params),
-  getVendors: (params) => vendorsAPI.getAll(params),
-  getDeliveryAgents: (params) => deliveryPartnersAPI.getAll(params),
-  activateUser: (id) => customersAPI.verifyStatus(id, { status: "active" }),
-  deactivateUser: (id) => customersAPI.verifyStatus(id, { status: "inactive" }),
-  suspendUser: (id) => customersAPI.verifyStatus(id, { status: "suspended" }),
-  deleteUser: (id) => customersAPI.delete(id),
-  resetPassword: (id) =>
-    apiCall(() => apiClient.post(`/users/${id}/reset-password`), {
+    apiCall(() => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data), {
       success: true,
-      message: "Password reset email sent",
+      message: "Status updated successfully",
     }),
-  createUser: (data) => customersAPI.create(data),
-  updateUser: (id, data) => customersAPI.update(id, data),
 };
-
-// Legacy alias for backward compatibility
-export const vendorApprovalsAPI = vendorsAPI;
 
 // Legacy Delivery Agents API (for backward compatibility)
-// Note: Backend doesn't have /api/delivery-agents/pending or /api/delivery-agents/payouts
-// Use deliveryPartnersAPI methods and verify-status endpoint instead
-// Backend uses: 1 = PENDING, 2 = APPROVED
-export const deliveryAgentsAPI = {
-  getPendingApprovals: async () => {
-    if (USE_MOCK_DATA) {
-      return mockData.deliveryAgents.filter((a) => a.status === "pending" || a.status === 1);
-    }
-    // Fetch all delivery partners and filter by pending status (1 or "pending")
-    try {
-      const agents = await deliveryPartnersAPI.getAll();
-      if (!Array.isArray(agents)) return [];
-      return agents.filter((a) => 
-        a.status === 1 || 
-        a.status === "pending" || 
-        a.status === "PENDING" ||
-        (typeof a.status === "string" && a.status.toLowerCase() === "pending")
-      );
-    } catch (error) {
-      console.warn("⚠️ Failed to fetch pending delivery agents", error);
-      return mockData.deliveryAgents.filter((a) => a.status === "pending" || a.status === 1);
-    }
-  },
-
-  approveAgent: (id) =>
-    deliveryPartnersAPI.verifyStatus(id, { status: 2 }), // 2 = APPROVED
-
-  rejectAgent: (id) =>
-    deliveryPartnersAPI.verifyStatus(id, { status: 1 }), // Set back to PENDING
-
-  getAgentPerformance: (id) => deliveryPartnersAPI.getById(id),
-
-  getPayouts: () => {
-    // Backend doesn't have this endpoint - return mock data or empty array
-    // Could calculate from delivery stats if available
-    if (USE_MOCK_DATA) {
-      return Promise.resolve(mockData.deliveryAgents.map((a) => ({
-        ...a,
-        pendingPayout: Math.floor((a.earnings || 0) * 0.3),
-      })));
-    }
-    // Return empty array since no payout endpoint exists
-    return Promise.resolve([]);
-  },
-};
-
-// Categories API
 export const categoriesAPI = {
   getAll: () =>
     apiCall(
@@ -613,23 +582,20 @@ export const productsAPI = {
     ),
 
   delete: (id) =>
-    apiCall(
-      () => apiClient.delete(ENDPOINTS.PRODUCTS_ADMIN_DELETE(id)),
-      { success: true, message: "Product deleted successfully" }
-    ),
+    apiCall(() => apiClient.delete(ENDPOINTS.PRODUCTS_ADMIN_DELETE(id)), {
+      success: true,
+      message: "Product deleted successfully",
+    }),
 };
 
 // Orders API - Admin
 // Note: Backend doesn't have a general /api/orders endpoint for admin
 // Admin can only view orders by vendor: /api/admin/orders/vendor/:vendorId
 export const ordersAPI = {
-  getAll: (params) => {
+  getAll: () => {
     // Backend doesn't have general admin orders endpoint
     // Return mock data only (no API call to avoid 404)
-    console.warn("⚠️ /api/orders endpoint doesn't exist in backend, using mock data");
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(mockData.orders), 100);
-    });
+    return mockData.orders;
   },
 
   getDetails: (id) =>
@@ -645,10 +611,7 @@ export const ordersAPI = {
     ),
 
   getOrderHistory: (orderId) =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.ADMIN_ORDER_HISTORY(orderId)),
-      []
-    ),
+    apiCall(() => apiClient.get(ENDPOINTS.ADMIN_ORDER_HISTORY(orderId)), []),
 
   assignAgent: (orderId, agentId) =>
     apiCall(
@@ -770,11 +733,7 @@ export const analyticsAPI = {
 
 // Settings API
 export const settingsAPI = {
-  getRoles: () =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.ADMIN_ROLES_GET),
-      []
-    ),
+  getRoles: () => apiCall(() => apiClient.get(ENDPOINTS.ADMIN_ROLES_GET), []),
 
   getSiteSettings: () =>
     apiCall(() => apiClient.get("/settings/site"), {
@@ -857,12 +816,11 @@ export default apiClient;
 export const authAPI = {
   logout: () =>
     apiCall(() => apiClient.post(ENDPOINTS.ADMIN_LOGOUT), { success: true }),
-  
+
   getPermissions: () =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.ADMIN_PERMISSIONS),
-      { permissions: [] }
-    ),
+    apiCall(() => apiClient.get(ENDPOINTS.ADMIN_PERMISSIONS), {
+      permissions: [],
+    }),
 };
 
 // Staff Auth & Profile API
@@ -933,28 +891,22 @@ export const staffAuthAPI = {
 // Store API - Admin
 export const storeAPI = {
   getAll: (params) =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.STORE_ADMIN_GET_ALL, { params }),
-      []
-    ),
+    apiCall(() => apiClient.get(ENDPOINTS.STORE_ADMIN_GET_ALL, { params }), []),
 
   getById: (id) =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.STORE_ADMIN_GET_BY_ID(id)),
-      null
-    ),
+    apiCall(() => apiClient.get(ENDPOINTS.STORE_ADMIN_GET_BY_ID(id)), null),
 
   update: (id, data) =>
-    apiCall(
-      () => apiClient.put(ENDPOINTS.STORE_ADMIN_UPDATE(id), data),
-      { success: true, message: "Store updated successfully" }
-    ),
+    apiCall(() => apiClient.put(ENDPOINTS.STORE_ADMIN_UPDATE(id), data), {
+      success: true,
+      message: "Store updated successfully",
+    }),
 
   toggleStatus: (storeId, data) =>
-    apiCall(
-      () => apiClient.put(ENDPOINTS.STORE_TOGGLE_STATUS(storeId), data),
-      { success: true, message: "Store status updated successfully" }
-    ),
+    apiCall(() => apiClient.put(ENDPOINTS.STORE_TOGGLE_STATUS(storeId), data), {
+      success: true,
+      message: "Store status updated successfully",
+    }),
 };
 
 // Subscription API - Vendor & Customer
@@ -991,7 +943,8 @@ export const subscriptionAPI = {
 
     renew: (id, data) =>
       apiCall(
-        () => apiClient.put(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_RENEW(id), data),
+        () =>
+          apiClient.put(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_RENEW(id), data),
         { success: true, message: "Subscription renewed successfully" }
       ),
 
@@ -1013,7 +966,8 @@ export const subscriptionAPI = {
   customer: {
     get: (customerId) =>
       apiCall(
-        () => apiClient.get(ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_GET(customerId)),
+        () =>
+          apiClient.get(ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_GET(customerId)),
         null
       ),
 
@@ -1061,23 +1015,17 @@ export const subscriptionAPI = {
 
 // Roles & Permissions API
 export const rolesAPI = {
-  getAll: () =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.ADMIN_ROLES_GET),
-      []
-    ),
+  getAll: () => apiCall(() => apiClient.get(ENDPOINTS.ADMIN_ROLES_GET), []),
 
   updatePermissions: (code, data) =>
     apiCall(
-      () =>
-        apiClient.put(ENDPOINTS.ADMIN_ROLES_UPDATE_PERMISSIONS(code), data),
+      () => apiClient.put(ENDPOINTS.ADMIN_ROLES_UPDATE_PERMISSIONS(code), data),
       { success: true, message: "Role permissions updated successfully" }
     ),
 
   bulkUpdatePermissions: (data) =>
     apiCall(
-      () =>
-        apiClient.put(ENDPOINTS.ADMIN_ROLES_BULK_UPDATE_PERMISSIONS, data),
+      () => apiClient.put(ENDPOINTS.ADMIN_ROLES_BULK_UPDATE_PERMISSIONS, data),
       { success: true, message: "Role permissions updated successfully" }
     ),
 };
@@ -1085,37 +1033,22 @@ export const rolesAPI = {
 // Vendor Analytics API
 export const vendorAnalyticsAPI = {
   getBasic: () =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_BASIC),
-      {}
-    ),
+    apiCall(() => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_BASIC), {}),
 
   getLimited: () =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_LIMITED),
-      {}
-    ),
+    apiCall(() => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_LIMITED), {}),
 
   getFull: () =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_FULL),
-      {}
-    ),
+    apiCall(() => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_FULL), {}),
 };
 
 // Map/Places API
 export const mapPlsAPI = {
   autosuggest: (params = {}) =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.MAP_PLS_AUTOSUGGEST, { params }),
-      []
-    ),
+    apiCall(() => apiClient.get(ENDPOINTS.MAP_PLS_AUTOSUGGEST, { params }), []),
 
   geocode: (params = {}) =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.MAP_PLS_GEOCODE, { params }),
-      null
-    ),
+    apiCall(() => apiClient.get(ENDPOINTS.MAP_PLS_GEOCODE, { params }), null),
 
   reverseGeocode: (params = {}) =>
     apiCall(

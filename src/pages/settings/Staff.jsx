@@ -19,8 +19,9 @@ import {
 import {
   EyeOutlined,
   EditOutlined,
+  PlusOutlined,
   DeleteOutlined,
-  KeyOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import { staffAPI } from "../../services/api";
 
@@ -33,6 +34,12 @@ const Staff = () => {
   const [viewData, setViewData] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
+  const [searchText, setSearchText] = useState("");
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
   const [form] = Form.useForm();
 
   const fetchData = async () => {
@@ -45,6 +52,7 @@ const Staff = () => {
         ? res
         : [];
       setData(list);
+      setPagination((prev) => ({ ...prev, total: list.length }));
     } catch (e) {
       message.error(e?.response?.data?.message || "Failed to load staff");
     } finally {
@@ -157,6 +165,15 @@ const Staff = () => {
     }
   };
 
+  const getStatusColor = (checked) => (checked ? "#9dda52" : "#ffbc2c ");
+  const getRoleColor = (role) => {
+    const key = String(role || "").toUpperCase();
+    if (key === "SUPER_ADMIN") return "#4096ff";
+    if (key === "ADMIN") return "#9dda52";
+    if (key === "SUB_ADMIN") return "#ffbc2c";
+    return "#d9d9d9";
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -172,12 +189,17 @@ const Staff = () => {
         key: "role",
         render: (_, r) => {
           const role = r?.roles?.[0]?.code || r?.roleType || "ADMIN";
+          const roleLabel = String(role).replace(/_/g, " ");
+          const roleColor = getRoleColor(role);
           return (
             <Tag
-              color="#ffbc2c"
-              style={{ fontWeight: "bold", color: "#3c2f3d" }}
+              color={roleColor}
+              style={{
+                color: "#3c2f3d",
+                textTransform: "capitalize",
+              }}
             >
-              {role}
+              {roleLabel}
             </Tag>
           );
         },
@@ -187,11 +209,18 @@ const Staff = () => {
         key: "isActive",
         render: (_, r) => {
           const id = r?._id || r?.id;
+          const isActive = !!r?.isActive;
           return (
             <Switch
-              checked={!!r?.isActive}
+              checked={isActive}
               loading={togglingId === id}
               onChange={(checked) => onToggleActive(r, checked)}
+              checkedChildren="Active"
+              unCheckedChildren="InActive"
+              style={{
+                backgroundColor: getStatusColor(isActive),
+                borderColor: getStatusColor(isActive),
+              }}
             />
           );
         },
@@ -200,26 +229,34 @@ const Staff = () => {
         title: "Actions",
         key: "Actions",
         render: (_, record) => (
-          <Space>
+          <Space size="small">
             <Button
+              type="text"
               size="small"
               icon={<EyeOutlined />}
               onClick={() => onView(record)}
-            >
-            </Button>
+              title="View"
+              style={{ color: "#9dda52" }}
+            />
             <Button
+              type="text"
               size="small"
               icon={<EditOutlined />}
               onClick={() => onEdit(record)}
-            >
-            </Button>
+              title="Edit"
+              style={{ color: "#ffbc2c" }}
+            />
             <Popconfirm
               title="Delete this admin?"
               onConfirm={() => onDelete(record)}
             >
-              <Button size="small" danger icon={<DeleteOutlined />}>
-
-              </Button>
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                title="Delete"
+              />
             </Popconfirm>
           </Space>
         ),
@@ -229,24 +266,112 @@ const Staff = () => {
   );
 
   return (
-    <Card
-      title="Staff (Admins & Sub-admins)"
-      extra={
-        <Button
-          style={{ backgroundColor: "#9dda52", color: "#3c2f3d" }}
-          onClick={onAdd}
-        >
-          Add Admin
-        </Button>
-      }
+    <div
+      style={{
+        padding: "clamp(16px, 2vw, 24px)",
+        background: "#f0f0f0",
+        minHeight: "100vh",
+      }}
     >
-      <Table
-        rowKey={(r) => r._id || r.id}
-        columns={columns}
-        dataSource={data}
-        loading={loading}
-        pagination={{ pageSize: 10 }}
-      />
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+          marginBottom: "20px",
+        }}
+      >
+        <div
+          className="flex justify-between items-center mb-6"
+          style={{
+            flexWrap: "wrap",
+            gap: 12,
+            rowGap: 12,
+            alignItems: "flex-start",
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "24px",
+              fontWeight: "bold",
+              color: "#3c2f3d",
+              margin: 0,
+            }}
+          >
+            Staff Management
+          </h1>
+          <div
+            className="flex items-center gap-3"
+            style={{
+              flexWrap: "nowrap",
+              gap: 12,
+              justifyContent: "flex-end",
+              flexShrink: 1,
+            }}
+          >
+            <Input
+              placeholder="Search Staff..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: "100%", maxWidth: 320 }}
+              size="large"
+              allowClear
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={onAdd}
+              style={{ background: "#9dda52", color: "#3c2f3d" }}
+            >
+              Add Admin
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+        }}
+      >
+        {/** Filtered data with pagination syncing */}
+        {(() => {
+          const filtered = (data || []).filter((item) => {
+            const name = `${item?.firstName || ""} ${
+              item?.lastName || ""
+            }`.toLowerCase();
+            const email = (item?.email || "").toLowerCase();
+            const search = searchText.toLowerCase();
+            return name.includes(search) || email.includes(search);
+          });
+
+          const pagedPagination = {
+            ...pagination,
+            total: filtered.length,
+            showSizeChanger: true,
+            showTotal: (total) => `Total ${total} staff`,
+          };
+
+          const handleTableChange = (pager) => {
+            setPagination({ ...pager, total: filtered.length });
+          };
+
+          return (
+            <Table
+              rowKey={(r) => r._id || r.id}
+              columns={columns}
+              dataSource={filtered}
+              loading={loading}
+              pagination={pagedPagination}
+              onChange={handleTableChange}
+              scroll={{ x: 800 }}
+            />
+          );
+        })()}
+      </div>
 
       <Modal
         open={open}
@@ -321,12 +446,24 @@ const Staff = () => {
               </Tag>
             </Form.Item>
           )}
-          <Form.Item
-            name="isActive"
-            label="Active-Status"
-            valuePropName="checked"
-          >
-            <Switch />
+          <Form.Item shouldUpdate noStyle>
+            {() => {
+              const checked = form.getFieldValue("isActive");
+              const color = getStatusColor(checked);
+              return (
+                <Form.Item
+                  name="isActive"
+                  label="Active-Status"
+                  valuePropName="checked"
+                >
+                  <Switch
+                    checkedChildren="Active"
+                    unCheckedChildren="Inactive"
+                    style={{ backgroundColor: color, borderColor: color }}
+                  />
+                </Form.Item>
+              );
+            }}
           </Form.Item>
           {/* Password field removed; password will be auto-generated and emailed */}
         </Form>
@@ -376,7 +513,7 @@ const Staff = () => {
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Active-Status">
-                <Tag color={viewData?.isActive ? "green" : "red"}>
+                <Tag color={getStatusColor(viewData?.isActive)}>
                   {viewData?.isActive ? "Active" : "Inactive"}
                 </Tag>
               </Descriptions.Item>
@@ -391,7 +528,7 @@ const Staff = () => {
           <div>No data</div>
         )}
       </Drawer>
-    </Card>
+    </div>
   );
 };
 

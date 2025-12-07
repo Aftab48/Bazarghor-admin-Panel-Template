@@ -9,11 +9,11 @@ import {
   message,
   Avatar,
   Upload,
+  Modal,
 } from "antd";
 import {
   UploadOutlined,
   DeleteOutlined,
-  EditOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import apiClient from "../../services/api";
@@ -27,6 +27,8 @@ const AdminProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pwdSaving, setPwdSaving] = useState(false);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [form] = Form.useForm();
   const [pwdForm] = Form.useForm();
   const [admin, setAdmin] = useState(null);
@@ -55,7 +57,7 @@ const AdminProfile = () => {
           profilePictureUri: data?.profilePicture?.uri || "",
         });
       } catch (e) {
-        message.error("Failed to load profile");
+        message.error(e?.response?.data?.message || "Failed to load profile");
       } finally {
         setLoading(false);
       }
@@ -121,24 +123,25 @@ const AdminProfile = () => {
 
   const avatarSrc = admin?.profilePicture?.uri || "";
 
-  const updateProfilePicture = async (file) => {
-    if (!file) {
+  const updateProfilePicture = async (profilePicture) => {
+    if (!profilePicture) {
       message.error("Removal not supported by backend yet");
       return;
     }
-    setSaving(true);
+    setAvatarSaving(true);
     try {
       const formData = new FormData();
-      formData.append("profilePicture", file);
+      formData.append("profilePicture", profilePicture);
       await apiClient.put(ENDPOINTS.SUPER_ADMIN_UPDATE, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       message.success("Profile picture updated");
       setAdmin((prev) => ({ ...prev, profilePicture: { uri: "" } }));
+      setAvatarModalVisible(false);
     } catch (e) {
       message.error(e?.response?.data?.message || "Failed to update picture");
     } finally {
-      setSaving(false);
+      setAvatarSaving(false);
     }
   };
 
@@ -148,7 +151,7 @@ const AdminProfile = () => {
 
   const beforeUpload = async (file) => {
     await updateProfilePicture(file);
-    return false;
+    return false; // prevent default upload
   };
 
   return (
@@ -164,45 +167,27 @@ const AdminProfile = () => {
     >
       <Card loading={loading}>
         <Space align="center" size={16} style={{ marginBottom: 16 }}>
-          <div style={{ position: "relative", width: 64, height: 64 }}>
-            <Avatar size={64} src={avatarSrc} icon={<UserOutlined />} />
-            <Upload
-              showUploadList={false}
-              beforeUpload={beforeUpload}
-              accept="image/*"
-            >
-              <Button
-                type="text"
-                icon={<EditOutlined />}
-                style={{
-                  position: "absolute",
-                  right: -8,
-                  bottom: -8,
-                  background: "#ffffff",
-                  border: "1px solid #e5e5e5",
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.12)",
-                  borderRadius: "50%",
-                  width: 28,
-                  height: 28,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#3c2f3d",
-                }}
-                title="Change avatar"
-              />
-            </Upload>
+          <div
+            style={{
+              position: "relative",
+              width: 72,
+              height: 72,
+              cursor: "pointer",
+            }}
+            onClick={() => setAvatarModalVisible(true)}
+          >
+            <Avatar
+              size={72}
+              src={avatarSrc}
+              icon={<UserOutlined />}
+              style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}
+            />
           </div>
           <div>
             <Title level={4} style={{ margin: 0 }}>
               {admin?.firstName || ""} {admin?.lastName || ""}
             </Title>
             <Text type="secondary">{admin?.email}</Text>
-            <Space style={{ marginTop: 8 }}>
-              <Button icon={<DeleteOutlined />} danger onClick={onRemoveAvatar}>
-                Remove
-              </Button>
-            </Space>
           </div>
         </Space>
         <Form form={form} layout="vertical" onFinish={onSaveProfile}>
@@ -289,6 +274,43 @@ const AdminProfile = () => {
           </Button>
         </Form>
       </Card>
+      <Modal
+        open={avatarModalVisible}
+        onCancel={() => setAvatarModalVisible(false)}
+        footer={null}
+        centered
+        title="Manage Profile Picture"
+      >
+        <Space
+          direction="vertical"
+          style={{ width: "100%" }}
+          size="middle"
+          align="center"
+        >
+          <Avatar size={120} src={avatarSrc} icon={<UserOutlined />} />
+          <Upload
+            showUploadList={false}
+            beforeUpload={beforeUpload}
+            accept="image/*"
+          >
+            <Button
+              icon={<UploadOutlined />}
+              loading={avatarSaving}
+              style={{ background: "#9dda52", color: "#3c2f3d" }}
+            >
+              Upload New
+            </Button>
+          </Upload>
+          <Button
+            icon={<DeleteOutlined />}
+            danger
+            onClick={onRemoveAvatar}
+            loading={avatarSaving}
+          >
+            Remove Picture
+          </Button>
+        </Space>
+      </Modal>
     </Space>
   );
 };

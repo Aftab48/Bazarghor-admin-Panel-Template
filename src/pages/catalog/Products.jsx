@@ -1,5 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Table, Button, Input, Space, Tag, Image, Switch, message, Dropdown, Select } from 'antd';
+import { useState, useEffect } from "react";
+import {
+  Table,
+  Button,
+  Input,
+  Space,
+  Tag,
+  Image,
+  Switch,
+  message,
+  Dropdown,
+  Select,
+} from "antd";
 import {
   SearchOutlined,
   PlusOutlined,
@@ -8,16 +19,20 @@ import {
   DeleteOutlined,
   StarOutlined,
   StarFilled,
-} from '@ant-design/icons';
-import { productsAPI, categoriesAPI } from '../../services/api';
+} from "@ant-design/icons";
+import { productsAPI, categoriesAPI } from "../../services/api";
 
 const Products = () => {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   useEffect(() => {
     fetchData();
@@ -31,11 +46,15 @@ const Products = () => {
         productsAPI.getAll(),
         categoriesAPI.getAll(),
       ]);
-      setProducts(productsData);
-      setCategories(categoriesData);
-      setPagination({ ...pagination, total: productsData.length });
+      const safeProducts = Array.isArray(productsData) ? productsData : [];
+      const safeCategories = Array.isArray(categoriesData)
+        ? categoriesData
+        : [];
+      setProducts(safeProducts);
+      setCategories(safeCategories);
+      setPagination((prev) => ({ ...prev, total: safeProducts.length }));
     } catch {
-      message.error('Failed to fetch products');
+      message.error("Failed to fetch products");
     } finally {
       setLoading(false);
     }
@@ -45,12 +64,16 @@ const Products = () => {
     try {
       await productsAPI.toggleFeatured(productId);
       // Update local state immediately
-      setProducts(products.map(p => 
-        p.id === productId ? { ...p, isFeatured: !currentStatus } : p
-      ));
-      message.success(`Product ${currentStatus ? 'removed from' : 'added to'} featured`);
+      setProducts(
+        products.map((p) =>
+          p.id === productId ? { ...p, isFeatured: !currentStatus } : p
+        )
+      );
+      message.success(
+        `Product ${currentStatus ? "removed from" : "added to"} featured`
+      );
     } catch {
-      message.error('Failed to update product');
+      message.error("Failed to update product");
     }
   };
 
@@ -58,24 +81,24 @@ const Products = () => {
     try {
       await productsAPI.delete(productId);
       // Remove from local state immediately
-      setProducts(products.filter(p => p.id !== productId));
-      message.success('Product deleted successfully');
+      setProducts(products.filter((p) => p.id !== productId));
+      message.success("Product deleted successfully");
     } catch {
-      message.error('Failed to delete product');
+      message.error("Failed to delete product");
     }
   };
 
   const getActionMenu = (record) => ({
     items: [
       {
-        key: 'edit',
+        key: "edit",
         icon: <EditOutlined />,
-        label: 'Edit',
+        label: "Edit",
       },
       {
-        key: 'delete',
+        key: "delete",
         icon: <DeleteOutlined />,
-        label: 'Delete',
+        label: "Delete",
         danger: true,
         onClick: () => handleDelete(record.id),
       },
@@ -84,9 +107,9 @@ const Products = () => {
 
   const columns = [
     {
-      title: 'Image',
-      dataIndex: 'image',
-      key: 'image',
+      title: "Image",
+      dataIndex: "image",
+      key: "image",
       render: (image) => (
         <Image
           src={image}
@@ -98,9 +121,9 @@ const Products = () => {
       ),
     },
     {
-      title: 'Product',
-      dataIndex: 'name',
-      key: 'name',
+      title: "Product",
+      dataIndex: "name",
+      key: "name",
       render: (text, record) => (
         <div>
           <div className="font-medium">{text}</div>
@@ -109,55 +132,57 @@ const Products = () => {
       ),
     },
     {
-      title: 'Category',
-      dataIndex: 'categoryId',
-      key: 'categoryId',
+      title: "Category",
+      dataIndex: "categoryId",
+      key: "categoryId",
       render: (categoryId) => {
-        const category = categories.find(c => c.id === categoryId);
-        return category ? <Tag>{category.name}</Tag> : '-';
+        const category = categories.find((c) => c.id === categoryId);
+        return category ? <Tag>{category.name}</Tag> : "-";
       },
     },
     {
-      title: 'Vendor',
-      dataIndex: 'vendorName',
-      key: 'vendorName',
+      title: "Vendor",
+      dataIndex: "vendorName",
+      key: "vendorName",
     },
     {
-      title: 'Price',
-      dataIndex: 'price',
-      key: 'price',
+      title: "Price",
+      dataIndex: "price",
+      key: "price",
       render: (price) => `₹${price}`,
       sorter: (a, b) => a.price - b.price,
     },
     {
-      title: 'Stock',
-      dataIndex: 'stock',
-      key: 'stock',
+      title: "Stock",
+      dataIndex: "stock",
+      key: "stock",
       render: (stock) => (
-        <Tag color={stock > 10 ? 'green' : stock > 0 ? 'orange' : 'red'}>
+        <Tag color={stock > 10 ? "green" : stock > 0 ? "orange" : "red"}>
           {stock}
         </Tag>
       ),
       sorter: (a, b) => a.stock - b.stock,
     },
     {
-      title: 'Rating',
-      dataIndex: 'rating',
-      key: 'rating',
+      title: "Rating",
+      dataIndex: "rating",
+      key: "rating",
       render: (rating, record) => (
         <div>
           <Space>
             <StarFilled className="text-yellow-500" />
             {rating}
           </Space>
-          <div className="text-xs text-gray-500">({record.reviewsCount} reviews)</div>
+          <div className="text-xs text-gray-500">
+            ({record.reviewsCount} reviews)
+          </div>
         </div>
       ),
     },
     {
-      title: 'Featured',
-      dataIndex: 'isFeatured',
-      key: 'isFeatured',
+      title: "Featured",
+      dataIndex: "isFeatured",
+      key: "isFeatured",
       render: (isFeatured, record) => (
         <Switch
           checked={isFeatured}
@@ -167,81 +192,154 @@ const Products = () => {
         />
       ),
       filters: [
-        { text: 'Featured', value: true },
-        { text: 'Not Featured', value: false },
+        { text: "Featured", value: true },
+        { text: "Not Featured", value: false },
       ],
       onFilter: (value, record) => record.isFeatured === value,
     },
     {
-      title: 'Status',
-      dataIndex: 'isActive',
-      key: 'isActive',
+      title: "Status",
+      dataIndex: "isActive",
+      key: "isActive",
       render: (isActive) => (
-        <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? 'Active' : 'Inactive'}
+        <Tag color={isActive ? "green" : "red"}>
+          {isActive ? "Active" : "Inactive"}
         </Tag>
       ),
     },
     {
-      title: 'Actions',
-      key: 'actions',
+      title: "Actions",
+      key: "actions",
       render: (_, record) => (
-        <Dropdown menu={getActionMenu(record)} trigger={['click']}>
+        <Dropdown menu={getActionMenu(record)} trigger={["click"]}>
           <Button icon={<MoreOutlined />} />
         </Dropdown>
       ),
     },
   ];
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = 
-      product.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchText.toLowerCase()) ||
-      product.vendorName.toLowerCase().includes(searchText.toLowerCase());
-    
-    const matchesCategory = !selectedCategory || product.categoryId === selectedCategory;
-    
+  const filteredProducts = (products || []).filter((product) => {
+    if (!product) return false;
+    const search = searchText.toLowerCase();
+    const name = (product.name || "").toLowerCase();
+    const sku = (product.sku || "").toLowerCase();
+    const vendor = (product.vendorName || "").toLowerCase();
+    const matchesSearch =
+      name.includes(search) || sku.includes(search) || vendor.includes(search);
+
+    const matchesCategory =
+      !selectedCategory || product.categoryId === selectedCategory;
+
     return matchesSearch && matchesCategory;
   });
 
+  useEffect(() => {
+    // Reset pagination when filters change
+    setPagination((prev) => ({
+      ...prev,
+      current: 1,
+      total: filteredProducts.length,
+    }));
+  }, [searchText, selectedCategory, filteredProducts.length]);
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Products</h1>
-        <Button type="primary" icon={<PlusOutlined />}>
-          Add Product
-        </Button>
+    <div
+      style={{
+        padding: "clamp(16px, 2vw, 24px)",
+        background: "#f0f0f0",
+        minHeight: "100vh",
+      }}
+    >
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+          marginBottom: "20px",
+        }}
+      >
+        <div
+          className="flex flex-wrap gap-3 justify-between items-center"
+          style={{ gap: 12, rowGap: 12, alignItems: "flex-start" }}
+        >
+          <h1
+            style={{
+              fontSize: "24px",
+              fontWeight: "bold",
+              color: "#3c2f3d",
+              margin: 0,
+            }}
+          >
+            Products
+          </h1>
+          <Space className="flex flex-wrap gap-3" size="middle">
+            <Input
+              allowClear
+              placeholder="Search products..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: "100%", maxWidth: 340 }}
+              size="large"
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              style={{
+                background: "#9dda52",
+                borderColor: "#9dda52",
+                color: "#3c2f3d",
+              }}
+            >
+              Add Product
+            </Button>
+          </Space>
+        </div>
       </div>
 
-      <Space className="mb-4" size="middle">
-        <Input
-          placeholder="Search products..."
-          prefix={<SearchOutlined />}
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          style={{ width: 300 }}
-        />
-        <Select
-          placeholder="Filter by category"
-          style={{ width: 200 }}
-          allowClear
-          value={selectedCategory}
-          onChange={setSelectedCategory}
-          options={categories.map(cat => ({ label: cat.name, value: cat.id }))}
-        />
-      </Space>
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+        }}
+      >
+        <Space
+          className="flex flex-wrap gap-3"
+          size="middle"
+          style={{ marginBottom: 16 }}
+        >
+          <Select
+            placeholder="Filter by category"
+            style={{ minWidth: 200 }}
+            allowClear
+            value={selectedCategory}
+            onChange={setSelectedCategory}
+            options={categories.map((cat) => ({
+              label: cat.name,
+              value: cat.id,
+            }))}
+          />
+        </Space>
 
-      <Table
-        columns={columns}
-        dataSource={filteredProducts}
-        rowKey="id"
-        loading={loading}
-        pagination={pagination}
-        onChange={(newPagination) => setPagination(newPagination)}
-      />
+        <Table
+          columns={columns}
+          dataSource={filteredProducts || []}
+          rowKey={(record) => record?.id || record?._id || record?.sku}
+          loading={loading}
+          pagination={{
+            ...pagination,
+            total: filteredProducts.length,
+            showSizeChanger: true,
+            showTotal: (total) => `Total ${total} products`,
+          }}
+          onChange={(pager) =>
+            setPagination({ ...pager, total: filteredProducts.length })
+          }
+        />
+      </div>
     </div>
   );
 };
 
 export default Products;
-

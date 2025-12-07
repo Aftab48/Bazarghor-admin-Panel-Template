@@ -39,11 +39,13 @@ const Header = () => {
       try {
         const currentRole = roles[0] || "SUPER_ADMIN";
         // Normalize role to string for comparison
-        const normalizedRole = typeof currentRole === "string" 
-          ? currentRole 
-          : currentRole?.code || currentRole?.roleCode || String(currentRole);
+        const normalizedRole =
+          typeof currentRole === "string"
+            ? currentRole
+            : currentRole?.code || currentRole?.roleCode || String(currentRole);
         let endpoint = ENDPOINTS.SUPER_ADMIN_PROFILE;
-        if (normalizedRole === ROLES.ADMIN) endpoint = ENDPOINTS.STAFF_ADMIN_PROFILE;
+        if (normalizedRole === ROLES.ADMIN)
+          endpoint = ENDPOINTS.STAFF_ADMIN_PROFILE;
         else if (normalizedRole === ROLES.SUB_ADMIN)
           endpoint = ENDPOINTS.STAFF_SUB_ADMIN_PROFILE;
         const resp = await apiClient.get(endpoint);
@@ -94,11 +96,12 @@ const Header = () => {
     } else if (key === "profile") {
       const currentRole = roles[0] || ROLES.SUPER_ADMIN;
       // Normalize role to string for comparison
-      const normalizedRole = typeof currentRole === "string" 
-        ? currentRole 
-        : currentRole?.code || currentRole?.roleCode || String(currentRole);
-      if (normalizedRole === ROLES.SUPER_ADMIN) navigate("/settings/profile");
-      else navigate("/settings/staff-profile");
+      const normalizedRole =
+        typeof currentRole === "string"
+          ? currentRole
+          : currentRole?.code || currentRole?.roleCode || String(currentRole);
+      if (normalizedRole === ROLES.SUPER_ADMIN) navigate("/profile");
+      else navigate("/staff-profile");
     }
   };
 
@@ -141,18 +144,65 @@ const Header = () => {
           placement="bottomRight"
           arrow
         >
-          <div className="flex items-center gap-2 cursor-pointer">
-            <Avatar src={profile.avatar} icon={<UserOutlined />} />
-            <div className="hidden sm:flex sm:flex-col">
-              <span className="text-gray-700 font-medium">{profile.name}</span>
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            style={{
+              padding: "8px 12px",
+              borderRadius: "8px",
+              transition: "background-color 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.04)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
+          >
+            <Avatar
+              src={profile.avatar}
+              icon={<UserOutlined />}
+              size={40}
+              style={{ border: "2px solid #9dda52" }}
+            />
+            <div className="hidden sm:flex sm:flex-col" style={{ gap: "4px" }}>
+              <span
+                className="text-gray-800 font-semibold"
+                style={{ fontSize: "14px", lineHeight: "1.2" }}
+              >
+                {profile.name}
+              </span>
               {roles.length > 0 && (
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   {roles.map((role, index) => {
                     // Handle both string and object roles
-                    const roleCode = typeof role === "string" ? role : role?.code || role?.roleCode || String(role);
+                    const roleCode =
+                      typeof role === "string"
+                        ? role
+                        : role?.code || role?.roleCode || String(role);
+
+                    // Map role codes to display names
+                    const roleDisplayName = roleCode
+                      .split("_")
+                      .map(
+                        (word) => word.charAt(0) + word.slice(1).toLowerCase()
+                      )
+                      .join(" ");
+
                     return (
-                      <Tag key={roleCode || index} color="blue" style={{ fontSize: "10px", margin: 0 }}>
-                        {roleCode}
+                      <Tag
+                        key={roleCode || index}
+                        color="processing"
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 500,
+                          margin: 0,
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          border: "none",
+                          lineHeight: "1.4",
+                        }}
+                      >
+                        {roleDisplayName}
                       </Tag>
                     );
                   })}
