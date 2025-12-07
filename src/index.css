@@ -17,8 +17,8 @@ body {
   font-family: var(--font-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f5f6fa;
-  color: #111827;
+  background: #f0f0f0;
+  color: #3c2f3d;
 }
 
 h1,

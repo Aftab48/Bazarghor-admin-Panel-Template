@@ -131,7 +131,7 @@ const Header = ({ onToggleSidebar, collapsed, isMobile }) => {
     <AntHeader
       className="bg-white shadow-sm"
       style={{
-        padding: isMobile ? "0 16px" : "0 24px",
+        padding: isMobile ? "0 12px" : "0 16px",
         display: "flex",
         alignItems: "center",
         minHeight: 64,

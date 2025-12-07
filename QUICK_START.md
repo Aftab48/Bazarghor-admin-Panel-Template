@@ -3,6 +3,7 @@
 ## Prerequisites
 
 Make sure you have the following installed:
+
 - Node.js (v18 or higher)
 - pnpm (recommended) or npm
 
@@ -49,18 +50,22 @@ pnpm preview
 ## Project Features Overview
 
 ### 🏠 Dashboard
+
 - Access from the home page
 - View key metrics: orders, revenue, vendors, customers
 - Interactive charts showing trends
 - Recent orders table
 
 ### 👥 User Management
+
 Navigate through the sidebar to:
+
 - **Customers** (`/users/customers`)
 - **Vendors** (`/users/vendors`)
-- **Delivery Agents** (`/users/delivery-agents`)
+- **Delivery Partners** (`/users/delivery-agents`)
 
 Actions available:
+
 - ✅ Activate user
 - ⛔ Deactivate user
 - 🔒 Suspend user
@@ -69,71 +74,77 @@ Actions available:
 - 🗑️ Delete user
 
 ### 🏪 Vendor Management (`/vendor-management`)
+
 - View pending vendor applications
 - Approve or reject vendors
 - Monitor sales and inventory
 - Suspend/unsuspend vendors
 
 ### 🚚 Delivery Agent Management (`/delivery-management`)
+
 - Approve/reject agent applications
 - View performance metrics
 - Manage payouts
 
 ### 📦 Catalog Management
+
 - **Categories** (`/catalog/categories`)
   - Add/edit/delete categories
   - Hierarchical structure support
-  
 - **Products** (`/catalog/products`)
   - Manage product listings
   - Set featured products
   - Filter by category and vendor
 
 ### 🛒 Order Management (`/orders`)
+
 - View orders by status tabs
-- Assign delivery agents
+- Assign Delivery Partners
 - Update order status
 - Process refunds
 
 ### 💰 Payments & Transactions (`/transactions`)
+
 - View all transactions
 - Filter by type and status
 - Export reports
 
 ### 🎁 Promotions
+
 - **Banners** (`/promotions/banners`)
   - Create promotional banners
   - Schedule activation periods
-  
 - **Discount Codes** (`/promotions/discount-codes`)
   - Create discount codes
   - Set usage limits
   - Track redemptions
 
 ### 📊 Analytics & Reports (`/analytics`)
+
 - Sales by vendor
 - Sales by category
 - Delivery performance
 - Customer retention metrics
 
 ### ⚙️ Settings
+
 - **Roles & Permissions** (`/settings/roles`)
   - Create admin roles
   - Assign permissions
-  
 - **Site Settings** (`/settings/site`)
   - Configure site details
   - Set tax rates and currency
-  
 - **Notifications** (`/settings/notifications`)
   - Manage email/SMS templates
 
 ### 🎫 Support Tickets (`/support`)
+
 - View and respond to tickets
 - Assign to admins
 - Update status
 
 ### 📋 Audit Logs (`/audit-logs`)
+
 - Track all admin activities
 - Filter by admin, action, date
 - Export logs
@@ -163,9 +174,10 @@ The admin panel is designed to work with a backend API. If the API is unavailabl
 ## Mock Data
 
 The application comes with comprehensive mock data:
+
 - 50 Customers
 - 30 Vendors (5 pending approval)
-- 25 Delivery Agents (3 pending approval)
+- 25 Delivery Partners (3 pending approval)
 - 9 Categories
 - 100 Products
 - 100 Orders
@@ -255,4 +267,3 @@ pnpm preview
 7. ✅ Deploy to production
 
 Happy coding! 🚀
-

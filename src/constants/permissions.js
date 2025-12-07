@@ -54,42 +54,42 @@ export const ROLES = {
 export const ROUTE_PERMISSIONS = {
   // Dashboard - always visible if authenticated
   "/": null, // No permission required
-  
+
   // User Management
   "/users/customers": PERMISSIONS.VIEW_CUSTOMERS,
   "/users/vendors": PERMISSIONS.VIEW_VENDORS,
-  "/users/delivery-agents": PERMISSIONS.VIEW_DELIVERY_PARTNERS,
-  
+  "/users/delivery-partners": PERMISSIONS.VIEW_DELIVERY_PARTNERS,
+
   // Vendor Management
   "/vendor-management": PERMISSIONS.VIEW_VENDORS,
-  
+
   // Delivery Management
   "/delivery-management": PERMISSIONS.VIEW_DELIVERY_PARTNERS,
-  
+
   // Catalog
   "/catalog/categories": PERMISSIONS.VIEW_PRODUCTS,
   "/catalog/products": PERMISSIONS.VIEW_PRODUCTS,
-  
+
   // Orders
   "/orders": PERMISSIONS.VIEW_ORDERS,
-  
+
   // Transactions
   "/transactions": PERMISSIONS.VIEW_ORDERS, // Using VIEW_ORDERS as fallback
-  
+
   // Promotions
   "/promotions/banners": PERMISSIONS.VIEW_ORDERS, // Using VIEW_ORDERS as fallback
   "/promotions/discount-codes": PERMISSIONS.VIEW_ORDERS, // Using VIEW_ORDERS as fallback
-  
+
   // Analytics
   "/analytics": PERMISSIONS.VIEW_ORDERS, // Using VIEW_ORDERS as fallback
-  
+
   // Settings
   "/settings/staff": [PERMISSIONS.VIEW_ADMINS, PERMISSIONS.CREATE_SUB_ADMIN], // Any of these
   "/settings/roles": PERMISSIONS.MANAGE_ROLE_PERMISSIONS,
-  
+
   // Support
   "/support": null, // Visible by default for now
-  
+
   // Audit Logs
   "/audit-logs": null, // Visible by default for now
 };
@@ -105,20 +105,19 @@ export const canAccessRoute = (routePath, userPermissions, userRoles) => {
   if (userRoles?.includes(ROLES.SUPER_ADMIN)) {
     return true;
   }
-  
+
   const requiredPerms = getRoutePermissions(routePath);
-  
+
   // No permission required
   if (requiredPerms === null) {
     return true;
   }
-  
+
   // Array of permissions (any of them)
   if (Array.isArray(requiredPerms)) {
-    return requiredPerms.some(perm => userPermissions?.includes(perm));
+    return requiredPerms.some((perm) => userPermissions?.includes(perm));
   }
-  
+
   // Single permission
   return userPermissions?.includes(requiredPerms);
 };
-

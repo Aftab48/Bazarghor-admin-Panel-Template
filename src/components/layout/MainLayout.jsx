@@ -38,7 +38,7 @@ const MainLayout = () => {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.35)",
+            boxShadow: "0 0 14px rgba(0,0,0,0.09)",
             zIndex: 900,
           }}
         />
@@ -55,15 +55,14 @@ const MainLayout = () => {
           isMobile={isMobile}
         />
         <Content
-          className="bg-gray-50 min-h-[calc(100vh-88px)]"
-          style={{ padding: isMobile ? 16 : 24, margin: isMobile ? 12 : 24 }}
+          className="min-h-[calc(100vh-88px)]"
+          style={{
+            padding: isMobile ? 8 : 10,
+            margin: isMobile ? 8 : 10,
+            background: "#f0f0f0",
+          }}
         >
-          <div
-            className="bg-white rounded-lg shadow-sm"
-            style={{ padding: isMobile ? 16 : 24 }}
-          >
-            <Outlet />
-          </div>
+          <Outlet />
         </Content>
       </Layout>
     </Layout>

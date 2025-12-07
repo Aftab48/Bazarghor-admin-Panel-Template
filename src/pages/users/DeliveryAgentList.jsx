@@ -76,7 +76,7 @@ const DeliveryAgentList = () => {
       }
     } catch (error) {
       message.error(
-        `Failed to fetch delivery agents: ${error.message || "Unknown error"}`
+        `Failed to fetch Delivery Partners: ${error.message || "Unknown error"}`
       );
       setAgents([]);
       setPagination((prev) => ({ ...prev, total: 0 }));
@@ -315,7 +315,7 @@ const DeliveryAgentList = () => {
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
         }}
       >
         <div
@@ -378,7 +378,7 @@ const DeliveryAgentList = () => {
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
         }}
       >
         <Table
@@ -389,7 +389,7 @@ const DeliveryAgentList = () => {
           pagination={{
             ...pagination,
             total: filteredAgents?.length || 0,
-            showTotal: (total) => `Total ${total} delivery agents`,
+            showTotal: (total) => `Total ${total} Delivery Partners`,
           }}
           onChange={(newPagination) => setPagination(newPagination)}
           locale={{ emptyText: "No agents found" }}

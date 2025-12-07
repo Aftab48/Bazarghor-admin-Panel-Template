@@ -63,8 +63,8 @@ const Sidebar = ({ collapsed, onCollapse, onBreakpoint, isMobile }) => {
       }
       if (hasPermission(PERMISSIONS.VIEW_DELIVERY_PARTNERS)) {
         userChildren.push({
-          key: "/users/delivery-agents",
-          label: <Link to="/users/delivery-agents">Delivery Partners</Link>,
+          key: "/users/delivery-partners",
+          label: <Link to="/users/delivery-partners">Delivery Partners</Link>,
         });
       }
 

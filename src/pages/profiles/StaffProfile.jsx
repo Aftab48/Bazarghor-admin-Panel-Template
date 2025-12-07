@@ -147,7 +147,7 @@ const StaffProfile = () => {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Card
         loading={loading}
-        style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.04)", borderRadius: 8 }}
+        style={{ boxShadow: "0 0 14px rgba(0,0,0,0.09)", borderRadius: 8 }}
         bodyStyle={{ padding: "clamp(16px, 2vw, 24px)" }}
       >
         <Space align="center" size={16} style={{ marginBottom: 16 }}>
@@ -164,7 +164,7 @@ const StaffProfile = () => {
               size={72}
               src={avatarSrc}
               icon={<UserOutlined />}
-              style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}
+              style={{ boxShadow: "0 0 14px rgba(0,0,0,0.09)" }}
             />
           </div>
           <div>
@@ -216,7 +216,7 @@ const StaffProfile = () => {
       </Card>
       <Card
         title="Change Password"
-        style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.04)", borderRadius: 8 }}
+        style={{ boxShadow: "0 0 14px rgba(0,0,0,0.09)", borderRadius: 8 }}
         bodyStyle={{ padding: "clamp(16px, 2vw, 24px)" }}
       >
         <Form form={pwdForm} layout="vertical" onFinish={onChangePassword}>

@@ -40,15 +40,39 @@ apiClient.interceptors.response.use(
       console.warn("⚠️ API unavailable, using mock data");
     } else if (error.response) {
       const status = error.response.status;
+      const messageText =
+        error?.response?.data?.message || error?.message || "Unauthorized";
+
       if (status === 401) {
-        // Clear auth state on 401
+        // For sub-admins, don't force logout on permission-style 401s; show message only
+        let storedRoles = [];
+        try {
+          const roleStr = localStorage.getItem("userRoles");
+          storedRoles = roleStr ? JSON.parse(roleStr) : [];
+        } catch (_) {
+          storedRoles = [];
+        }
+        const isSubAdmin =
+          Array.isArray(storedRoles) && storedRoles.includes("SUB_ADMIN");
+        const tokenError = /token|expired|signature|invalid|jwt/i.test(
+          messageText
+        );
+
+        if (isSubAdmin && !tokenError) {
+          message.error(
+            messageText || "You are not authorized to perform this action."
+          );
+          return Promise.reject(error);
+        }
+
+        // Clear auth state on real auth failures
         localStorage.removeItem("authToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("userRoles");
         localStorage.removeItem("userPermissions");
         localStorage.removeItem("userId");
         localStorage.removeItem("userRole");
-        message.error("Unauthorized. Please login again.");
+        message.error(messageText || "Unauthorized. Please login again.");
         // Redirect to login if not already there
         if (
           window.location.pathname !== "/login" &&
@@ -508,7 +532,7 @@ export const deliveryPartnersAPI = {
     }),
 };
 
-// Legacy Delivery Agents API (for backward compatibility)
+// Legacy Delivery Partners API (for backward compatibility)
 export const categoriesAPI = {
   getAll: () =>
     apiCall(

@@ -1,35 +1,40 @@
 # Bazarghor Admin Panel
 
-A comprehensive admin panel for managing a marketplace platform with vendors, customers, delivery agents, orders, and more.
+A comprehensive admin panel for managing a marketplace platform with vendors, customers, Delivery Partners, orders, and more.
 
 ## Features
 
 ### 1. Dashboard
+
 - Overview statistics (orders, revenue, vendors, customers, deliveries)
 - Daily/Weekly/Monthly analytics with charts
 - Revenue trends and active users visualization
 - Recent orders table
 
 ### 2. User Management
+
 - **Customers**: View, add, edit, delete, activate, deactivate, suspend
 - **Vendors**: Manage vendor accounts with sales and inventory stats
-- **Delivery Agents**: Track performance, ratings, and earnings
+- **Delivery Partners**: Track performance, ratings, and earnings
 - Password reset functionality
 - User status management (Active, Inactive, Suspended)
 
 ### 3. Vendor Management
+
 - Approve or reject vendor registrations
 - Monitor sales & inventory per vendor
 - Suspend/unsuspend vendors
 - View vendor performance metrics
 
 ### 4. Delivery Agent Management
+
 - Approve/reject delivery agent applications
 - Track performance (orders delivered, ratings)
 - Manage payouts
 - View agent status and vehicle information
 
 ### 5. Category & Product Management
+
 - Hierarchical category management
 - Add/edit/delete categories
 - Product listing with vendor filter
@@ -37,25 +42,29 @@ A comprehensive admin panel for managing a marketplace platform with vendors, cu
 - Manage product inventory and pricing
 
 ### 6. Order Management
+
 - View orders by status (Pending, Ongoing, Completed, Cancelled)
-- Assign/reassign delivery agents
+- Assign/reassign Delivery Partners
 - Update order status
 - Handle refunds and disputes
 - Export orders
 
 ### 7. Payments & Transactions
+
 - View all transactions
 - Filter by type (Order Payment, Vendor Payout, Refund, Commission)
 - Monitor commissions and service fees
 - Export payment reports
 
 ### 8. Promotions & Banners
+
 - Manage homepage banners with scheduling
 - Create and manage discount codes
 - Set usage limits and validity periods
 - Track promotion performance
 
 ### 9. Analytics & Reports
+
 - Sales reports by vendor and category
 - Delivery performance metrics
 - Customer retention data
@@ -63,18 +72,21 @@ A comprehensive admin panel for managing a marketplace platform with vendors, cu
 - Export functionality
 
 ### 10. System Settings
+
 - Roles & Permissions management
 - Create sub-admins
 - Update site settings (logo, tax rates, currency)
 - Manage notification templates (email/SMS/push)
 
 ### 11. Support Tickets
+
 - View and respond to support tickets
 - Assign tickets to admins
 - Update ticket status
 - Conversation threads
 
 ### 12. Audit Logs
+
 - Track all admin activities
 - Filter by admin, action type, and date
 - Export audit logs
@@ -154,7 +166,7 @@ VITE_USE_MOCK_DATA=false
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - pnpm (or npm/yarn)
 
 ### Installation
@@ -189,25 +201,30 @@ pnpm preview
 ## Features Implementation
 
 ### User Actions
+
 Each user (customer, vendor, delivery agent) can be:
+
 - ✅ **Activated**: Enable the account
 - ✅ **Deactivated**: Disable the account
 - ✅ **Suspended**: Temporarily suspend the account
 - 🔐 Password reset via email
 
 ### Order Workflow
+
 1. View orders by status
 2. Assign delivery agent
 3. Update order status through the lifecycle
 4. Handle refunds if needed
 
 ### Vendor Approval Workflow
+
 1. View pending vendor registrations
 2. Review vendor details
 3. Approve or reject application
 4. Monitor approved vendors
 
 ### Promotion Management
+
 - Create time-bound banners
 - Generate discount codes with usage limits
 - Track promotion performance
@@ -215,9 +232,10 @@ Each user (customer, vendor, delivery agent) can be:
 ## Mock Data
 
 The application includes comprehensive mock data for:
+
 - 50 customers
 - 30 vendors (5 pending approval)
-- 25 delivery agents (3 pending approval)
+- 25 Delivery Partners (3 pending approval)
 - 9 categories
 - 100 products
 - 100 orders
@@ -228,6 +246,7 @@ The application includes comprehensive mock data for:
 ## Responsive Design
 
 The admin panel is fully responsive and works on:
+
 - 🖥️ Desktop
 - 💻 Laptop
 - 📱 Tablet

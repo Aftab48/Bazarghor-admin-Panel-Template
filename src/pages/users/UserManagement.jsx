@@ -35,11 +35,11 @@ const UserManagement = () => {
       color: "#ffbc2c",
     },
     {
-      key: "delivery-agents",
+      key: "delivery-partners",
       title: "Delivery Partners",
       description: "Manage delivery partner accounts",
       icon: <CarOutlined style={{ fontSize: 48, color: "#fa8c16" }} />,
-      path: "/users/delivery-agents",
+      path: "/users/delivery-partners",
       permission: PERMISSIONS.VIEW_DELIVERY_PARTNERS,
       color: "#fa8c16",
     },
@@ -54,16 +54,22 @@ const UserManagement = () => {
   };
 
   return (
-    <div style={{ padding: "clamp(16px, 2vw, 24px)" }}>
-      <Title level={2} style={{ marginBottom: 24, color: "#3c2f3d" }}>
-        User Management
-      </Title>
-      <Text
-        type="secondary"
-        style={{ fontSize: 16, marginBottom: 32, display: "block" }}
-      >
-        Select a section to manage different types of users
-      </Text>
+    <div
+      style={{
+        background: "#ffffff",
+        borderRadius: 8,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+        padding: "clamp(16px, 2vw, 24px)",
+      }}
+    >
+      <div style={{ marginBottom: 24 }}>
+        <Title level={2} style={{ marginBottom: 8, color: "#3c2f3d" }}>
+          User Management
+        </Title>
+        <Text type="secondary" style={{ fontSize: 16, display: "block" }}>
+          Select a section to manage different types of users
+        </Text>
+      </div>
 
       <Row gutter={[20, 20]}>
         {accessibleSections.map((section) => (
@@ -122,7 +128,7 @@ const UserManagement = () => {
       </Row>
 
       {accessibleSections.length === 0 && (
-        <Card>
+        <Card style={{ marginTop: 16 }}>
           <div style={{ textAlign: "center", padding: "40px" }}>
             <Text type="secondary" style={{ fontSize: 16 }}>
               You don't have permission to access any user management sections.

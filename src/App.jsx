@@ -104,7 +104,7 @@ function App() {
                 }
               />
               <Route
-                path="users/delivery-agents"
+                path="users/delivery-partners"
                 element={
                   <RequirePermission
                     requiredPermissions={[PERMISSIONS.VIEW_DELIVERY_PARTNERS]}

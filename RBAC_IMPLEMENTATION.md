@@ -9,17 +9,20 @@ This document describes the Role-Based Access Control (RBAC) implementation in t
 ### Core Components
 
 1. **AuthContext** (`src/contexts/AuthContext.jsx`)
+
    - Centralized authentication state management
    - Manages user data, roles, permissions, and tokens
    - Persists state to localStorage
    - Auto-fetches permissions from backend on mount
 
 2. **Permission Constants** (`src/constants/permissions.js`)
+
    - Mirrors backend permission constants
    - Defines route-to-permission mappings
    - Provides helper functions for permission checking
 
 3. **Custom Hooks**
+
    - `useAuth()` - Access authentication context
    - `usePermissions()` - Permission checking utilities
 
@@ -36,6 +39,7 @@ This document describes the Role-Based Access Control (RBAC) implementation in t
 
 1. User submits login form (Admin-Login or Staff-Login)
 2. Backend validates credentials and returns:
+
    - `token` - JWT authentication token
    - `refreshToken` - Token for refreshing session
    - `roles` - Array of user roles (e.g., ["SUPER_ADMIN"] or ["ADMIN"])
@@ -43,6 +47,7 @@ This document describes the Role-Based Access Control (RBAC) implementation in t
    - User data (id, name, email, etc.)
 
 3. Login component calls `AuthContext.login()` with:
+
    ```javascript
    {
      token: "jwt_token_here",
@@ -54,6 +59,7 @@ This document describes the Role-Based Access Control (RBAC) implementation in t
    ```
 
 4. AuthContext:
+
    - Stores data in state
    - Persists to localStorage:
      - `authToken`
@@ -77,6 +83,7 @@ This document describes the Role-Based Access Control (RBAC) implementation in t
 #### Permission Structure
 
 Permissions are string constants matching backend:
+
 - `view_admins`, `create_admin`, `update_admin`, `delete_admin`
 - `view_vendors`, `create_vendor`, `update_vendor`, `delete_vendor`
 - `view_delivery_partners`, `create_delivery_partner`, etc.
@@ -89,10 +96,12 @@ Permissions are string constants matching backend:
 #### Permission Checking
 
 **SUPER_ADMIN Special Case:**
+
 - SUPER_ADMIN has implicit access to ALL permissions
 - No need to check individual permissions for SUPER_ADMIN
 
 **Regular Permission Check:**
+
 ```javascript
 const { hasPermission } = useAuth();
 if (hasPermission("view_products")) {
@@ -101,6 +110,7 @@ if (hasPermission("view_products")) {
 ```
 
 **Multiple Permissions (Any):**
+
 ```javascript
 const { hasAnyPermission } = useAuth();
 if (hasAnyPermission(["view_customers", "view_vendors"])) {
@@ -109,6 +119,7 @@ if (hasAnyPermission(["view_customers", "view_vendors"])) {
 ```
 
 **Multiple Permissions (All):**
+
 ```javascript
 const { hasAllPermissions } = useAuth();
 if (hasAllPermissions(["view_products", "create_product"])) {
@@ -147,16 +158,18 @@ Users can have multiple roles (stored as array). The system checks if user has A
 The Sidebar component automatically filters menu items based on user permissions:
 
 **How it works:**
+
 1. Sidebar uses `useAuth()` and `usePermissions()` hooks
 2. Menu items are filtered using `useMemo` based on current permissions
 3. Only menu items the user has permission for are displayed
 
 **Permission Mappings:**
+
 - Dashboard: Always visible if authenticated
 - User Management: Visible if user has VIEW_CUSTOMERS OR VIEW_VENDORS OR VIEW_DELIVERY_PARTNERS
 - Customers: Requires VIEW_CUSTOMERS
 - Vendors: Requires VIEW_VENDORS
-- Delivery Agents: Requires VIEW_DELIVERY_PARTNERS
+- Delivery Partners: Requires VIEW_DELIVERY_PARTNERS
 - Catalog/Products: Requires VIEW_PRODUCTS
 - Orders: Requires VIEW_ORDERS
 - Settings/Staff: Requires VIEW_ADMINS OR CREATE_SUB_ADMIN
@@ -167,6 +180,7 @@ The Sidebar component automatically filters menu items based on user permissions
 Routes are protected at three levels:
 
 #### Level 1: Authentication (RequireAuth)
+
 ```javascript
 <Route path="/" element={
   <RequireAuth>
@@ -174,11 +188,13 @@ Routes are protected at three levels:
   </RequireAuth>
 }>
 ```
+
 - Checks if user is authenticated
 - Redirects to login if not authenticated
 - Shows loading spinner while checking
 
 #### Level 2: Role-Based (RequireRole)
+
 ```javascript
 <Route path="settings/profile" element={
   <RequireRole allowedRoles={["SUPER_ADMIN"]}>
@@ -186,10 +202,12 @@ Routes are protected at three levels:
   </RequireRole>
 }>
 ```
+
 - Checks if user has any of the allowed roles
 - Shows 403 page if role check fails
 
 #### Level 3: Permission-Based (RequirePermission)
+
 ```javascript
 <Route path="users/customers" element={
   <RequirePermission requiredPermissions={[PERMISSIONS.VIEW_CUSTOMERS]}>
@@ -197,6 +215,7 @@ Routes are protected at three levels:
   </RequirePermission>
 }>
 ```
+
 - Checks if user has required permission(s)
 - Supports `requireAll` prop for requiring all permissions
 - Shows 403 page if permission check fails
@@ -204,10 +223,12 @@ Routes are protected at three levels:
 ### 6. Permission Fetching
 
 **Automatic Fetching:**
+
 - On app mount, if token exists, permissions are automatically fetched from `/admin/permissions`
 - This ensures permissions are always up-to-date
 
 **Manual Refresh:**
+
 ```javascript
 const { refreshPermissions } = useAuth();
 await refreshPermissions(); // Fetches latest permissions from backend
@@ -216,11 +237,13 @@ await refreshPermissions(); // Fetches latest permissions from backend
 ### 7. Error Handling
 
 **401 Unauthorized:**
+
 - Auth state is cleared
 - User is redirected to login page
 - Error message is displayed
 
 **403 Forbidden:**
+
 - Error message is displayed
 - User stays on current page (no redirect)
 - Access denied page is shown for protected routes
@@ -240,6 +263,7 @@ await refreshPermissions(); // Fetches latest permissions from backend
 ### Test 1: SUPER_ADMIN Login and Full Access
 
 **Steps:**
+
 1. Navigate to `/login`
 2. Login with SUPER_ADMIN credentials
 3. Verify:
@@ -258,6 +282,7 @@ await refreshPermissions(); // Fetches latest permissions from backend
 ### Test 2: ADMIN Login and Permission-Based Access
 
 **Steps:**
+
 1. Navigate to `/login-staff`
 2. Login with ADMIN credentials
 3. Verify:
@@ -268,6 +293,7 @@ await refreshPermissions(); // Fetches latest permissions from backend
    - ✅ Header shows "ADMIN" role tag
 
 **Specific Checks:**
+
 - ✅ Can access `/users/customers` (if has VIEW_CUSTOMERS)
 - ✅ Can access `/users/vendors` (if has VIEW_VENDORS)
 - ✅ Can access `/catalog/products` (if has VIEW_PRODUCTS)
@@ -281,6 +307,7 @@ await refreshPermissions(); // Fetches latest permissions from backend
 ### Test 3: SUB_ADMIN Login and Limited Access
 
 **Steps:**
+
 1. Navigate to `/login-staff`
 2. Login with SUB_ADMIN credentials
 3. Verify:
@@ -290,6 +317,7 @@ await refreshPermissions(); // Fetches latest permissions from backend
    - ✅ Header shows "SUB_ADMIN" role tag
 
 **Specific Checks:**
+
 - ✅ Can access `/users/vendors` (if has VIEW_VENDORS)
 - ✅ Can access `/catalog/products` (if has VIEW_PRODUCTS)
 - ✅ Can access `/orders` (if has VIEW_ORDERS)
@@ -302,6 +330,7 @@ await refreshPermissions(); // Fetches latest permissions from backend
 ### Test 4: Menu Filtering
 
 **Steps:**
+
 1. Login as ADMIN or SUB_ADMIN
 2. Check sidebar menu items
 3. Verify:
@@ -310,6 +339,7 @@ await refreshPermissions(); // Fetches latest permissions from backend
    - ✅ Submenu items are also filtered
 
 **Test Cases:**
+
 - User without VIEW_CUSTOMERS should not see "Customers" in User Management
 - User without VIEW_VENDORS should not see "Vendors" in User Management
 - User without VIEW_PRODUCTS should not see "Catalog" menu
@@ -321,6 +351,7 @@ await refreshPermissions(); // Fetches latest permissions from backend
 ### Test 5: Route Protection
 
 **Steps:**
+
 1. Login as ADMIN or SUB_ADMIN
 2. Try to access protected routes directly via URL:
    - `/users/customers` (requires VIEW_CUSTOMERS)
@@ -335,6 +366,7 @@ await refreshPermissions(); // Fetches latest permissions from backend
 ### Test 6: Permission Fetching
 
 **Steps:**
+
 1. Login as any user
 2. Open browser DevTools → Network tab
 3. Verify:
@@ -343,9 +375,10 @@ await refreshPermissions(); // Fetches latest permissions from backend
    - ✅ Permissions are stored in localStorage as `userPermissions`
 
 **Manual Test:**
+
 ```javascript
 // In browser console
-JSON.parse(localStorage.getItem('userPermissions'))
+JSON.parse(localStorage.getItem("userPermissions"));
 // Should return array of permission strings
 ```
 
@@ -354,6 +387,7 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Test 7: Logout Functionality
 
 **Steps:**
+
 1. Login as any user
 2. Click user menu in header
 3. Click "Logout"
@@ -364,6 +398,7 @@ JSON.parse(localStorage.getItem('userPermissions'))
    - ✅ Cannot access protected routes
 
 **Check localStorage:**
+
 - `authToken` should be removed
 - `refreshToken` should be removed
 - `userRoles` should be removed
@@ -375,6 +410,7 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Test 8: Token Expiration (401 Handling)
 
 **Steps:**
+
 1. Login as any user
 2. Manually expire token (or wait for expiration)
 3. Try to access any protected route
@@ -389,6 +425,7 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Test 9: Permission Updates
 
 **Steps:**
+
 1. Login as ADMIN
 2. Note current permissions and menu items
 3. In backend, update ADMIN role permissions (add/remove permissions)
@@ -403,6 +440,7 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Test 10: Multiple Roles Support
 
 **Steps:**
+
 1. Create a user with multiple roles (e.g., ADMIN and SUB_ADMIN)
 2. Login with that user
 3. Verify:
@@ -415,9 +453,11 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Test 11: RequirePermission Component Options
 
 **Steps:**
+
 1. Test routes with different permission requirements:
 
 **Single Permission:**
+
 ```javascript
 <RequirePermission requiredPermissions={[PERMISSIONS.VIEW_CUSTOMERS]}>
   {/* Requires VIEW_CUSTOMERS */}
@@ -425,8 +465,9 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ```
 
 **Multiple Permissions (Any):**
+
 ```javascript
-<RequirePermission 
+<RequirePermission
   requiredPermissions={[PERMISSIONS.VIEW_ADMINS, PERMISSIONS.CREATE_SUB_ADMIN]}
   requireAll={false} // Default: any permission
 >
@@ -435,8 +476,9 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ```
 
 **Multiple Permissions (All):**
+
 ```javascript
-<RequirePermission 
+<RequirePermission
   requiredPermissions={[PERMISSIONS.VIEW_PRODUCTS, PERMISSIONS.CREATE_PRODUCT]}
   requireAll={true}
 >
@@ -449,6 +491,7 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Test 12: Loading States
 
 **Steps:**
+
 1. Clear localStorage
 2. Navigate to protected route
 3. Verify:
@@ -463,10 +506,12 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Issue: Permissions not loading
 
 **Symptoms:**
+
 - Menu items not filtering
 - Routes accessible without permissions
 
 **Solutions:**
+
 1. Check browser console for errors
 2. Verify `/admin/permissions` endpoint is accessible
 3. Check network tab for failed requests
@@ -476,10 +521,12 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Issue: Menu items not updating after permission change
 
 **Symptoms:**
+
 - Menu shows old permissions
 - New permissions not reflected
 
 **Solutions:**
+
 1. Refresh page (permissions auto-fetch on mount)
 2. Call `refreshPermissions()` manually
 3. Check backend role permissions are updated
@@ -488,10 +535,12 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Issue: 401 errors on every request
 
 **Symptoms:**
+
 - Constant redirects to login
 - Token appears invalid
 
 **Solutions:**
+
 1. Check token format in localStorage
 2. Verify backend JWT secret matches
 3. Check token expiration time
@@ -500,10 +549,12 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ### Issue: SUPER_ADMIN cannot access routes
 
 **Symptoms:**
+
 - SUPER_ADMIN sees 403 pages
 - Permission checks failing for SUPER_ADMIN
 
 **Solutions:**
+
 1. Verify SUPER_ADMIN role is in `roles` array
 2. Check `hasPermission` function handles SUPER_ADMIN correctly
 3. Verify role constant matches: `ROLES.SUPER_ADMIN === "SUPER_ADMIN"`
@@ -528,17 +579,19 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ## Best Practices
 
 1. **Always use hooks for permission checks:**
+
    ```javascript
    // ✅ Good
    const { hasPermission } = useAuth();
    if (hasPermission(PERMISSIONS.VIEW_PRODUCTS)) { ... }
-   
+
    // ❌ Bad
    const perms = JSON.parse(localStorage.getItem('userPermissions'));
    if (perms.includes('view_products')) { ... }
    ```
 
 2. **Use RequirePermission for route protection:**
+
    ```javascript
    // ✅ Good
    <RequirePermission requiredPermissions={[PERMISSIONS.VIEW_CUSTOMERS]}>
@@ -547,11 +600,14 @@ JSON.parse(localStorage.getItem('userPermissions'))
    ```
 
 3. **Check permissions before showing UI elements:**
+
    ```javascript
    const { hasPermission } = useAuth();
-   {hasPermission(PERMISSIONS.CREATE_PRODUCT) && (
-     <Button>Create Product</Button>
-   )}
+   {
+     hasPermission(PERMISSIONS.CREATE_PRODUCT) && (
+       <Button>Create Product</Button>
+     );
+   }
    ```
 
 4. **Let menu filtering happen automatically:**
@@ -570,6 +626,7 @@ JSON.parse(localStorage.getItem('userPermissions'))
 ## Conclusion
 
 The RBAC system provides comprehensive access control through:
+
 - Centralized authentication state
 - Permission-based route protection
 - Dynamic menu filtering
@@ -577,4 +634,3 @@ The RBAC system provides comprehensive access control through:
 - Automatic permission synchronization
 
 All components work together to ensure users only see and can access what they're permitted to, providing a secure and user-friendly admin interface.
-

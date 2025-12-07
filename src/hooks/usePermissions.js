@@ -1,5 +1,10 @@
 import { useAuth } from "./useAuth";
-import { getRoutePermissions, canAccessRoute } from "../constants/permissions";
+import {
+  getRoutePermissions,
+  canAccessRoute,
+  PERMISSIONS,
+  ROLES,
+} from "../constants/permissions";
 
 /**
  * Hook for permission checking utilities
@@ -14,6 +19,17 @@ export const usePermissions = () => {
    * @returns {boolean}
    */
   const hasPermission = (permission) => {
+    if (!permission) return false;
+
+    // Block catalog access for sub-admins regardless of backend permission payload
+    const isSubAdminOnly =
+      roles?.includes(ROLES.SUB_ADMIN) &&
+      !roles?.includes(ROLES.ADMIN) &&
+      !roles?.includes(ROLES.SUPER_ADMIN);
+    if (isSubAdminOnly && permission === PERMISSIONS.VIEW_PRODUCTS) {
+      return false;
+    }
+
     return authHasPermission(permission);
   };
 
@@ -23,7 +39,11 @@ export const usePermissions = () => {
    * @returns {boolean}
    */
   const hasAnyPermission = (permissionList) => {
-    if (!permissionList || !Array.isArray(permissionList) || permissionList.length === 0) {
+    if (
+      !permissionList ||
+      !Array.isArray(permissionList) ||
+      permissionList.length === 0
+    ) {
       return false;
     }
     return permissionList.some((perm) => hasPermission(perm));
@@ -35,7 +55,11 @@ export const usePermissions = () => {
    * @returns {boolean}
    */
   const hasAllPermissions = (permissionList) => {
-    if (!permissionList || !Array.isArray(permissionList) || permissionList.length === 0) {
+    if (
+      !permissionList ||
+      !Array.isArray(permissionList) ||
+      permissionList.length === 0
+    ) {
       return false;
     }
     return permissionList.every((perm) => hasPermission(perm));
@@ -67,4 +91,3 @@ export const usePermissions = () => {
     getRoutePermissions: getRoutePermissionsForPath,
   };
 };
-

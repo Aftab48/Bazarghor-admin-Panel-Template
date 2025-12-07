@@ -178,7 +178,7 @@ const CustomerList = () => {
 
   const columns = [
     {
-      title: "Customer",
+      title: "Customer Name",
       dataIndex: "name",
       key: "name",
       render: (text, record) => {
@@ -326,7 +326,7 @@ const CustomerList = () => {
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
         }}
       >
         <div
@@ -389,7 +389,7 @@ const CustomerList = () => {
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
           borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
         }}
       >
         <Table
