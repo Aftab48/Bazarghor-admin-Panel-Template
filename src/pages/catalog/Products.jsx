@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Table,
   Button,
@@ -6,7 +6,6 @@ import {
   Space,
   Tag,
   Image,
-  Switch,
   message,
   Dropdown,
   Select,
@@ -17,10 +16,29 @@ import {
   MoreOutlined,
   EditOutlined,
   DeleteOutlined,
-  StarOutlined,
-  StarFilled,
+  ShoppingOutlined,
+  CheckCircleOutlined,
+  SafetyCertificateOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import { productsAPI, categoriesAPI } from "../../services/api";
+import useDebounce from "../../hooks/useDebounce";
+
+const numberFormatter = new Intl.NumberFormat("en-IN");
+
+const formatNumber = (value) => numberFormatter.format(value ?? 0);
+
+const isLowStock = (product) => {
+  const quantity = Number(product?.quantity ?? 0);
+  const status = (product?.status || "").toLowerCase();
+  return status === "low_stock" || (quantity > 0 && quantity <= 10);
+};
+
+const isInStock = (product) => {
+  const quantity = Number(product?.quantity ?? 0);
+  const status = (product?.status || "").toLowerCase();
+  return status === "in_stock" || quantity > 10;
+};
 
 const Products = () => {
   const [loading, setLoading] = useState(false);
@@ -34,54 +52,164 @@ const Products = () => {
     total: 0,
   });
 
+  const debouncedSearch = useDebounce(searchText, 400);
+  const hasInitialized = useRef(false);
+  const pageSizeRef = useRef(10);
+
+  const normalizeProduct = (product) => {
+    if (!product) return null;
+    const imageList = Array.isArray(product.productImages)
+      ? product.productImages
+      : [];
+    const firstImage = imageList.length > 0 ? imageList[0] : null;
+    const primaryImage =
+      firstImage?.uri || firstImage?.url || product.image || "";
+
+    const vendorName = product.vendorId
+      ? `${product.vendorId.firstName || ""} ${product.vendorId.lastName || ""}`
+          .trim()
+          .replace(/\s+/g, " ") ||
+        product.vendorId.email ||
+        product.vendorId.mobNo
+      : product.storeId?.storeName;
+
+    const categoryId =
+      product.category?._id ||
+      product.category?.id ||
+      product.categoryId ||
+      product.category;
+
+    const categoryName =
+      product.category?.name ||
+      product.category?.categoryName ||
+      product.categoryName;
+
+    return {
+      ...product,
+      id: product._id || product.id,
+      name: product.productName || product.name,
+      sku: product.sku || product.slug,
+      vendorName,
+      categoryId,
+      categoryName,
+      primaryImage,
+      quantity: product.quantity ?? product.stock,
+      status: product.status,
+    };
+  };
+
   useEffect(() => {
-    fetchData();
+    const initialize = async () => {
+      await Promise.all([
+        fetchCategories(),
+        fetchProducts({ current: 1, pageSize: 10 }),
+      ]);
+      hasInitialized.current = true;
+    };
+    initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    if (!hasInitialized.current) return;
+    fetchProducts({
+      current: 1,
+      pageSize: pageSizeRef.current,
+      search: debouncedSearch,
+      categoryId: selectedCategory,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, selectedCategory]);
+
+  const fetchCategories = async () => {
+    try {
+      const categoriesResult = await categoriesAPI.getAll();
+      const safeCategories = Array.isArray(categoriesResult?.data)
+        ? categoriesResult.data
+        : Array.isArray(categoriesResult?.data?.data)
+        ? categoriesResult.data.data
+        : Array.isArray(categoriesResult)
+        ? categoriesResult
+        : [];
+      setCategories(safeCategories);
+    } catch (error) {
+      message.error("Failed to fetch categories");
+    }
+  };
+
+  const fetchProducts = async ({
+    current = 1,
+    pageSize = 10,
+    search = searchText,
+    categoryId = selectedCategory,
+  } = {}) => {
     setLoading(true);
     try {
-      const [productsData, categoriesData] = await Promise.all([
-        productsAPI.getAll(),
-        categoriesAPI.getAll(),
-      ]);
-      const safeProducts = Array.isArray(productsData) ? productsData : [];
-      const safeCategories = Array.isArray(categoriesData)
-        ? categoriesData
+      const params = {
+        page: current,
+        limit: pageSize,
+      };
+      const trimmedSearch = (search || "").trim();
+      if (trimmedSearch) {
+        params.search = trimmedSearch;
+      }
+      if (categoryId) {
+        params.categoryId = categoryId;
+      }
+
+      const productsData = await productsAPI.getAll(params);
+
+      const rawProducts = Array.isArray(productsData?.data)
+        ? productsData.data
+        : Array.isArray(productsData?.data?.data)
+        ? productsData.data.data
+        : Array.isArray(productsData)
+        ? productsData
         : [];
-      setProducts(safeProducts);
-      setCategories(safeCategories);
-      setPagination((prev) => ({ ...prev, total: safeProducts.length }));
-    } catch {
+
+      const normalizedProducts = rawProducts
+        .map((p) => normalizeProduct(p))
+        .filter(Boolean);
+
+      if (
+        normalizedProducts.length === 0 &&
+        current > 1 &&
+        (productsData?.paginator?.hasPrevPage || productsData?.paginator?.prev)
+      ) {
+        await fetchProducts({
+          current: current - 1,
+          pageSize,
+          search: trimmedSearch,
+          categoryId,
+        });
+        return;
+      }
+
+      setProducts(normalizedProducts);
+      setPagination((prev) => ({
+        ...prev,
+        current,
+        pageSize,
+        total:
+          productsData?.paginator?.itemCount ||
+          productsData?.data?.length ||
+          normalizedProducts.length,
+      }));
+      pageSizeRef.current = pageSize;
+    } catch (error) {
       message.error("Failed to fetch products");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleFeatured = async (productId, currentStatus) => {
-    try {
-      await productsAPI.toggleFeatured(productId);
-      // Update local state immediately
-      setProducts(
-        products.map((p) =>
-          p.id === productId ? { ...p, isFeatured: !currentStatus } : p
-        )
-      );
-      message.success(
-        `Product ${currentStatus ? "removed from" : "added to"} featured`
-      );
-    } catch {
-      message.error("Failed to update product");
-    }
-  };
-
   const handleDelete = async (productId) => {
     try {
       await productsAPI.delete(productId);
-      // Remove from local state immediately
-      setProducts(products.filter((p) => p.id !== productId));
+      fetchProducts({
+        current: pagination.current,
+        pageSize: pagination.pageSize,
+      });
       message.success("Product deleted successfully");
     } catch {
       message.error("Failed to delete product");
@@ -108,14 +236,16 @@ const Products = () => {
   const columns = [
     {
       title: "Image",
-      dataIndex: "image",
-      key: "image",
-      render: (image) => (
+      dataIndex: "primaryImage",
+      key: "primaryImage",
+      responsive: ["xs", "sm", "md", "lg"],
+      render: (_, record) => (
         <Image
-          src={image}
-          alt="Product"
-          width={50}
-          height={50}
+          src={record.primaryImage}
+          alt={record.name || "Product"}
+          width={48}
+          height={48}
+          fallback="https://via.placeholder.com/80?text=No+Image"
           className="rounded"
         />
       ),
@@ -124,6 +254,8 @@ const Products = () => {
       title: "Product",
       dataIndex: "name",
       key: "name",
+      ellipsis: true,
+      responsive: ["xs", "sm", "md", "lg"],
       render: (text, record) => (
         <div>
           <div className="font-medium">{text}</div>
@@ -133,74 +265,86 @@ const Products = () => {
     },
     {
       title: "Category",
-      dataIndex: "categoryId",
+      dataIndex: "categoryName",
       key: "categoryId",
-      render: (categoryId) => {
-        const category = categories.find((c) => c.id === categoryId);
-        return category ? <Tag>{category.name}</Tag> : "-";
+      responsive: ["sm", "md", "lg"],
+      render: (_, record) => {
+        const category =
+          record.categoryName ||
+          categories.find(
+            (c) =>
+              c.id === record.categoryId ||
+              c._id === record.categoryId ||
+              c.value === record.categoryId
+          )?.name;
+        return category ? <Tag>{category}</Tag> : "-";
       },
     },
     {
-      title: "Vendor",
+      title: "Vendor/Store",
       dataIndex: "vendorName",
       key: "vendorName",
+      responsive: ["md", "lg"],
+      render: (value, record) => value || record.storeId?.storeName || "-",
     },
     {
       title: "Price",
       dataIndex: "price",
       key: "price",
+      responsive: ["sm", "md", "lg"],
       render: (price) => `₹${price}`,
       sorter: (a, b) => a.price - b.price,
     },
     {
       title: "Stock",
-      dataIndex: "stock",
-      key: "stock",
-      render: (stock) => (
-        <Tag color={stock > 10 ? "green" : stock > 0 ? "orange" : "red"}>
-          {stock}
+      dataIndex: "quantity",
+      key: "quantity",
+      responsive: ["sm", "md", "lg"],
+      render: (quantity) => (
+        <Tag color={quantity > 10 ? "green" : quantity > 0 ? "orange" : "red"}>
+          {quantity ?? 0}
         </Tag>
       ),
-      sorter: (a, b) => a.stock - b.stock,
+      sorter: (a, b) => (a.quantity ?? 0) - (b.quantity ?? 0),
     },
-    {
-      title: "Rating",
-      dataIndex: "rating",
-      key: "rating",
-      render: (rating, record) => (
-        <div>
-          <Space>
-            <StarFilled className="text-yellow-500" />
-            {rating}
-          </Space>
-          <div className="text-xs text-gray-500">
-            ({record.reviewsCount} reviews)
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Featured",
-      dataIndex: "isFeatured",
-      key: "isFeatured",
-      render: (isFeatured, record) => (
-        <Switch
-          checked={isFeatured}
-          onChange={() => handleToggleFeatured(record.id, isFeatured)}
-          checkedChildren={<StarFilled />}
-          unCheckedChildren={<StarOutlined />}
-        />
-      ),
-      filters: [
-        { text: "Featured", value: true },
-        { text: "Not Featured", value: false },
-      ],
-      onFilter: (value, record) => record.isFeatured === value,
-    },
+    // {
+    //   title: "Featured",
+    //   dataIndex: "isFeatured",
+    //   key: "isFeatured",
+    //   render: (isFeatured, record) => (
+    //     <Switch
+    //       checked={isFeatured}
+    //       onChange={() => handleToggleFeatured(record.id, isFeatured)}
+    //       checkedChildren={<StarFilled />}
+    //       unCheckedChildren={<StarOutlined />}
+    //     />
+    //   ),
+    //   filters: [
+    //     { text: "Featured", value: true },
+    //     { text: "Not Featured", value: false },
+    //   ],
+    //   onFilter: (value, record) => record.isFeatured === value,
+    // },
     {
       title: "Status",
+      dataIndex: "status",
+      key: "status",
+      responsive: ["sm", "md", "lg"],
+      render: (status) => {
+        const colorMap = {
+          in_stock: "green",
+          low_stock: "orange",
+          out_of_stock: "red",
+        };
+        const label = (status || "").replace(/_/g, " ") || "-";
+        return <Tag color={colorMap[status] || "blue"}>{label}</Tag>;
+      },
+    },
+    {
+      title: "Active",
       dataIndex: "isActive",
       key: "isActive",
+      responsive: ["md", "lg"],
       render: (isActive) => (
         <Tag color={isActive ? "green" : "red"}>
           {isActive ? "Active" : "Inactive"}
@@ -224,8 +368,12 @@ const Products = () => {
     const name = (product.name || "").toLowerCase();
     const sku = (product.sku || "").toLowerCase();
     const vendor = (product.vendorName || "").toLowerCase();
+    const store = (product.storeId?.storeName || "").toLowerCase();
     const matchesSearch =
-      name.includes(search) || sku.includes(search) || vendor.includes(search);
+      name.includes(search) ||
+      sku.includes(search) ||
+      vendor.includes(search) ||
+      store.includes(search);
 
     const matchesCategory =
       !selectedCategory || product.categoryId === selectedCategory;
@@ -233,14 +381,58 @@ const Products = () => {
     return matchesSearch && matchesCategory;
   });
 
-  useEffect(() => {
-    // Reset pagination when filters change
-    setPagination((prev) => ({
-      ...prev,
-      current: 1,
-      total: filteredProducts.length,
-    }));
-  }, [searchText, selectedCategory, filteredProducts.length]);
+  const totalProductsCount = pagination.total || products.length || 0;
+  const activeProductsCount = products.filter(
+    (product) => product?.isActive
+  ).length;
+  const inStockProductsCount = products.filter((product) =>
+    isInStock(product)
+  ).length;
+  const lowStockProductsCount = products.filter((product) =>
+    isLowStock(product)
+  ).length;
+
+  const productStatCards = [
+    {
+      key: "total",
+      label: "Total Products",
+      value: formatNumber(totalProductsCount),
+      icon: <ShoppingOutlined />,
+      iconBg: "#eef2ff",
+      iconColor: "#4f46e5",
+      subLabel:
+        pagination.total && pagination.total !== products.length
+          ? "All pages"
+          : "Current list",
+    },
+    {
+      key: "active",
+      label: "Active",
+      value: formatNumber(activeProductsCount),
+      icon: <CheckCircleOutlined />,
+      iconBg: "#ecfdf5",
+      iconColor: "#10b981",
+      subLabel: products.length ? "Current page" : "",
+    },
+    {
+      key: "inStock",
+      label: "In Stock",
+      value: formatNumber(inStockProductsCount),
+      icon: <SafetyCertificateOutlined />,
+      iconBg: "#e0f2fe",
+      iconColor: "#0284c7",
+      subLabel: products.length ? "Current page" : "",
+    },
+    {
+      key: "lowStock",
+      label: "Low Stock",
+      value: formatNumber(lowStockProductsCount),
+      icon: <WarningOutlined />,
+      iconBg: "#fff7ed",
+      iconColor: "#f97316",
+      subLabel: products.length ? "Current page" : "",
+    },
+  ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -299,6 +491,59 @@ const Products = () => {
             </Button>
           </Space>
         </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 12,
+            marginTop: 16,
+          }}
+        >
+          {productStatCards.map((stat) => (
+            <div
+              key={stat.key}
+              style={{
+                background: "#f8fafc",
+                borderRadius: 10,
+                padding: "14px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: stat.iconBg,
+                  color: stat.iconColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                }}
+              >
+                {stat.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: "#6b7280" }}>
+                  {stat.label}
+                </div>
+                <div
+                  style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}
+                >
+                  {stat.value}
+                </div>
+                {stat.subLabel && (
+                  <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                    {stat.subLabel}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div
@@ -321,8 +566,8 @@ const Products = () => {
             value={selectedCategory}
             onChange={setSelectedCategory}
             options={categories.map((cat) => ({
-              label: cat.name,
-              value: cat.id,
+              label: cat.name || cat.categoryName || cat.title,
+              value: cat.id || cat._id || cat.value,
             }))}
           />
         </Space>
@@ -332,14 +577,18 @@ const Products = () => {
           dataSource={filteredProducts || []}
           rowKey={(record) => record?.id || record?._id || record?.sku}
           loading={loading}
+          scroll={{ x: 960 }}
+          size="middle"
           pagination={{
             ...pagination,
-            total: filteredProducts.length,
             showSizeChanger: true,
             showTotal: (total) => `Total ${total} products`,
           }}
           onChange={(pager) =>
-            setPagination({ ...pager, total: filteredProducts.length })
+            fetchProducts({
+              current: pager.current || pagination.current,
+              pageSize: pager.pageSize || pagination.pageSize,
+            })
           }
         />
       </div>

@@ -59,13 +59,17 @@ export const ENDPOINTS = {
 
   // Products - Admin
   PRODUCTS_ADMIN_ADD: "/products/admin/add-product",
-  PRODUCTS_ADMIN_GET_LIST: "/products/admin/get-products-list",
+  PRODUCTS_ADMIN_GET_LIST: "products/admin/get-products-list",
   PRODUCTS_ADMIN_GET_BY_ID: (id) => `/products/admin/get-product/${id}`,
   PRODUCTS_ADMIN_UPDATE: (id) => `/products/admin/update-product/${id}`,
   PRODUCTS_ADMIN_DELETE: (id) => `/products/admin/delete-product/${id}`,
 
-  // Products - Categories
-  PRODUCTS_CATEGORIES_LIST: "/products/categories/list",
+  // Catalog - Categories
+  CATEGORIES_ADD: "/categories/add-category",
+  CATEGORIES_LIST: "/categories/get-categories-list",
+  CATEGORIES_GET_BY_ID: (id) => `/categories/get-category/${id}`,
+  CATEGORIES_UPDATE: (id) => `/categories/update-category/${id}`,
+  CATEGORIES_DELETE: (id) => `/categories/delete-category/${id}`,
 
   // Stores - Admin
   STORE_ADMIN_GET_ALL: "/store/admin/get-store",

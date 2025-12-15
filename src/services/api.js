@@ -368,17 +368,12 @@ export const vendorsAPI = {
       message: "Status updated successfully",
     }),
 
-  // Legacy approval methods (for backward compatibility)
-  // Note: Backend doesn't have /api/vendors/pending endpoint
-  // Fetch all vendors and filter by status=1 (PENDING) instead
-  // Backend uses: 1 = PENDING, 2 = APPROVED
   getPendingApprovals: async () => {
     if (USE_MOCK_DATA) {
       return mockData.vendors.filter(
         (v) => v.status === "pending" || v.status === 1
       );
     }
-    // Fetch all vendors and filter by pending status (1 or "pending")
     try {
       const vendors = await vendorsAPI.getAll();
       if (!Array.isArray(vendors)) return [];
@@ -534,14 +529,30 @@ export const deliveryPartnersAPI = {
 
 // Legacy Delivery Partners API (for backward compatibility)
 export const categoriesAPI = {
-  getAll: () =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.PRODUCTS_CATEGORIES_LIST),
-      mockData.categories
-    ),
+  getAll: (params = {}) => {
+    const fallbackCategories = (() => {
+      if (!params?.search) {
+        return mockData.categories;
+      }
+      const term = String(params.search).trim().toLowerCase();
+      return mockData.categories.filter((category) => {
+        const name = String(category?.name || "").toLowerCase();
+        const description = String(category?.description || "").toLowerCase();
+        return name.includes(term) || description.includes(term);
+      });
+    })();
+
+    return apiCall(
+      () =>
+        apiClient.get(ENDPOINTS.CATEGORIES_LIST, {
+          params,
+        }),
+      fallbackCategories
+    );
+  },
 
   create: (data) =>
-    apiCall(() => apiClient.post("/categories", data), {
+    apiCall(() => apiClient.post(ENDPOINTS.CATEGORIES_ADD, data), {
       success: true,
       message: "Category created successfully",
       data,
@@ -565,7 +576,10 @@ export const categoriesAPI = {
 export const productsAPI = {
   getAll: (params) =>
     apiCall(
-      () => apiClient.get(ENDPOINTS.PRODUCTS_ADMIN_GET_LIST, { params }),
+      () =>
+        apiClient.get(ENDPOINTS.PRODUCTS_ADMIN_GET_LIST, {
+          params,
+        }),
       mockData.products
     ),
 
@@ -617,8 +631,6 @@ export const productsAPI = {
 // Admin can only view orders by vendor: /api/admin/orders/vendor/:vendorId
 export const ordersAPI = {
   getAll: () => {
-    // Backend doesn't have general admin orders endpoint
-    // Return mock data only (no API call to avoid 404)
     return mockData.orders;
   },
 
