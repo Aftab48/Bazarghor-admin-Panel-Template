@@ -159,7 +159,10 @@ const Categories = () => {
   const fetchCategories = async ({ search = searchText } = {}) => {
     setLoading(true);
     try {
-      const params = {};
+      const params = {
+        limit: 10000, // Request a high limit to get all categories
+        page: 1,
+      };
       const trimmedSearch = (search || "").trim();
       if (trimmedSearch) {
         params.search = trimmedSearch;
@@ -167,13 +170,17 @@ const Categories = () => {
 
       const result = await categoriesAPI.getAll(params);
 
-      const raw = Array.isArray(result?.data)
-        ? result.data
-        : Array.isArray(result?.data?.data)
-        ? result.data.data
-        : Array.isArray(result)
-        ? result
-        : [];
+      // Handle paginated response structure
+      let raw = [];
+      if (Array.isArray(result?.data)) {
+        raw = result.data;
+      } else if (Array.isArray(result?.data?.data)) {
+        raw = result.data.data;
+      } else if (Array.isArray(result?.data?.docs)) {
+        raw = result.data.docs;
+      } else if (Array.isArray(result)) {
+        raw = result;
+      }
 
       const normalized = raw.map((c) => normalizeCategory(c)).filter(Boolean);
 

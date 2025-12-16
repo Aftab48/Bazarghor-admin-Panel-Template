@@ -59,7 +59,7 @@ export const ENDPOINTS = {
 
   // Products - Admin
   PRODUCTS_ADMIN_ADD: "/products/admin/add-product",
-  PRODUCTS_ADMIN_GET_LIST: "products/admin/get-products-list",
+  PRODUCTS_ADMIN_GET_LIST: "/products/admin/get-products-list",
   PRODUCTS_ADMIN_GET_BY_ID: (id) => `/products/admin/get-product/${id}`,
   PRODUCTS_ADMIN_UPDATE: (id) => `/products/admin/update-product/${id}`,
   PRODUCTS_ADMIN_DELETE: (id) => `/products/admin/delete-product/${id}`,
