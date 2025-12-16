@@ -559,14 +559,14 @@ export const categoriesAPI = {
     }),
 
   update: (id, data) =>
-    apiCall(() => apiClient.put(`/categories/${id}`, data), {
+    apiCall(() => apiClient.put(ENDPOINTS.CATEGORIES_UPDATE(id), data), {
       success: true,
       message: "Category updated successfully",
       data,
     }),
 
   delete: (id) =>
-    apiCall(() => apiClient.delete(`/categories/${id}`), {
+    apiCall(() => apiClient.delete(ENDPOINTS.CATEGORIES_DELETE(id)), {
       success: true,
       message: "Category deleted successfully",
     }),

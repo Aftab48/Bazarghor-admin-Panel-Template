@@ -4,11 +4,13 @@ import {
   Button,
   Space,
   Modal,
+  Drawer,
   Form,
   Input,
   InputNumber,
   Select,
   Tag,
+  Image,
   message,
   Descriptions,
   Tabs,
@@ -42,6 +44,37 @@ const Categories = () => {
   const [form] = Form.useForm();
   const debouncedSearch = useDebounce(searchText, 400);
   const hasInitialized = useRef(false);
+
+  const getCategoryKeyCandidates = (category) => {
+    if (!category) return [];
+    return [category.id, category._id, category.slug]
+      .filter((value) => value !== undefined && value !== null)
+      .map((value) => String(value));
+  };
+
+  const getDirectChildRecords = (parentCategory) => {
+    if (!parentCategory || parentCategory?.parentId) return [];
+    const parentKeys = new Set(getCategoryKeyCandidates(parentCategory));
+    if (!parentKeys.size) return [];
+
+    return categories.filter((category) => {
+      const parentId = category?.parentId;
+      if (parentId === undefined || parentId === null) return false;
+      return parentKeys.has(String(parentId));
+    });
+  };
+
+  const getDirectChildValues = (parentCategory) => {
+    const children = getDirectChildRecords(parentCategory);
+    const values = children
+      .map(
+        (child) =>
+          child.slug || child.name || String(child.id || child._id || "")
+      )
+      .map((value) => String(value).trim())
+      .filter(Boolean);
+    return Array.from(new Set(values));
+  };
 
   const normalizeCategory = (category) => {
     if (!category) return null;
@@ -89,36 +122,22 @@ const Categories = () => {
     };
 
     const resolveIcon = () => {
-      if (typeof category.icon === "string")
-        return normalizeIconValue(category.icon);
+      const pickUriFromObject = (obj) =>
+        normalizeIconValue(obj?.uri || obj?.url || obj?.link || "");
       if (Array.isArray(category.icon)) {
-        const stringIcon = category.icon.find(
-          (iconEntry) => typeof iconEntry === "string" && iconEntry.trim()
+        const objWithUri = category.icon.find(
+          (iconEntry) =>
+            iconEntry &&
+            typeof iconEntry === "object" &&
+            (iconEntry.uri || iconEntry.url || iconEntry.link)
         );
-        if (stringIcon) return normalizeIconValue(stringIcon);
-        const objIcon = category.icon.find(
-          (iconEntry) => iconEntry && typeof iconEntry === "object"
-        );
-        if (objIcon) {
-          return normalizeIconValue(
-            objIcon.name ||
-              objIcon.slug ||
-              objIcon.title ||
-              objIcon.value ||
-              objIcon.key ||
-              ""
-          );
-        }
+        if (objWithUri) return pickUriFromObject(objWithUri);
+
+        return "";
       }
+
       if (category.icon && typeof category.icon === "object") {
-        return normalizeIconValue(
-          category.icon.name ||
-            category.icon.slug ||
-            category.icon.title ||
-            category.icon.value ||
-            category.icon.key ||
-            ""
-        );
+        return pickUriFromObject(category.icon);
       }
       return "";
     };
@@ -222,9 +241,18 @@ const Categories = () => {
 
   const handleEdit = (category) => {
     setEditingCategory(category);
+
+    const isParentCategory = !category?.parentId;
+    const derivedChildren = isParentCategory
+      ? getDirectChildValues(category)
+      : [];
+
     form.setFieldsValue({
       ...category,
-      children: category?.children || [],
+      // For parent categories, show only its own direct children (sub-categories)
+      children: derivedChildren.length
+        ? derivedChildren
+        : category?.children || [],
       description: category?.description || "",
       displayOrder: Number(category?.displayOrder ?? 0),
     });
@@ -264,14 +292,60 @@ const Categories = () => {
         ? values.children.map((child) => child.trim()).filter(Boolean)
         : [];
 
+      const normalizeChildKey = (value) =>
+        String(value || "")
+          .trim()
+          .toLowerCase();
+
+      const getNewChildrenOnly = ({ existing = [], submitted = [] }) => {
+        const existingSet = new Set(
+          existing.map(normalizeChildKey).filter(Boolean)
+        );
+        const uniqueNew = new Set();
+        const result = [];
+
+        submitted.forEach((child) => {
+          const key = normalizeChildKey(child);
+          if (!key) return;
+          if (existingSet.has(key)) return;
+          if (uniqueNew.has(key)) return;
+          uniqueNew.add(key);
+          result.push(String(child).trim());
+        });
+
+        return result;
+      };
+
       const payload = {
         ...values,
         name: values.name?.trim(),
-        slug: values.slug?.trim(),
+        // slug: values.slug?.trim(),
         description: values.description?.trim() || "",
-        children: normalizedChildren,
         displayOrder: Number(values.displayOrder) || 0,
       };
+      if (editingCategory) {
+        const isParentCategory = !editingCategory?.parentId;
+        if (isParentCategory) {
+          const existingChildren = getDirectChildValues(editingCategory);
+          const newChildren = getNewChildrenOnly({
+            existing: existingChildren,
+            submitted: normalizedChildren,
+          });
+
+          if (newChildren.length) {
+            payload.children = newChildren;
+          }
+        }
+      } else {
+        // Creating a new category (parent): send all children as new
+        if (normalizedChildren.length) {
+          payload.children = Array.from(
+            new Set(
+              normalizedChildren.map((c) => String(c).trim()).filter(Boolean)
+            )
+          );
+        }
+      }
 
       if (editingCategory) {
         await categoriesAPI.update(editingCategory.id, payload);
@@ -335,19 +409,39 @@ const Categories = () => {
     return acc;
   }, {});
 
-  const childCategoryOptions = categories.reduce((options, category) => {
-    const value =
-      category.slug ||
-      category.name ||
-      String(category.id || category._id || "");
-    if (!value) {
+  const childCategoryOptions = (() => {
+    // For parent-category update: show its existing direct sub-categories.
+    if (editingCategory && !editingCategory?.parentId) {
+      const directChildren = getDirectChildRecords(editingCategory);
+      return directChildren
+        .map((child) => {
+          const value =
+            child.slug || child.name || String(child.id || child._id || "");
+          const trimmed = String(value || "").trim();
+          if (!trimmed) return null;
+          return {
+            label: child.name || trimmed,
+            value: trimmed,
+          };
+        })
+        .filter(Boolean);
+    }
+
+    // Default: existing global list (useful for add flow / fallback).
+    return categories.reduce((options, category) => {
+      const value =
+        category.slug ||
+        category.name ||
+        String(category.id || category._id || "");
+      if (!value) {
+        return options;
+      }
+      if (!options.find((option) => option.value === value)) {
+        options.push({ label: category.name || value, value });
+      }
       return options;
-    }
-    if (!options.find((option) => option.value === value)) {
-      options.push({ label: category.name || value, value });
-    }
-    return options;
-  }, []);
+    }, []);
+  })();
 
   const getParentName = (parentId) => {
     if (!parentId) return "-";
@@ -388,18 +482,60 @@ const Categories = () => {
     return trimmed.length > 80 ? `${trimmed.slice(0, 80)}...` : trimmed;
   };
 
+  const IconPreview = ({ uri, size = 32 }) => {
+    const [broken, setBroken] = useState(false);
+    const cleanUri = typeof uri === "string" ? uri.trim() : "";
+    if (!cleanUri || broken) return <span>-</span>;
+
+    return (
+      <Image
+        src={cleanUri}
+        alt="icon"
+        width={size}
+        height={size}
+        preview={false}
+        onError={() => setBroken(true)}
+        style={{ objectFit: "cover", borderRadius: 6 }}
+      />
+    );
+  };
+
   const parentColumns = [
+    {
+      title: "Icon",
+      dataIndex: "icon",
+      key: "icon",
+      width: 120,
+      render: (icon) => (
+        <div style={{ display: "flex", justifyContent: "left" }}>
+          <IconPreview uri={icon} size={32} />
+        </div>
+      ),
+    },
     {
       title: "Category",
       dataIndex: "name",
       key: "name",
-      render: (text) => <div className="font-medium">{text}</div>,
+      render: (text, record) => (
+        <div>
+          <div className="font-medium">{text}</div>
+          {record.slug ? (
+            <code className="text-xs bg-gray-100 px-2 py-1 rounded mt-1 inline-block">
+              {record.slug}
+            </code>
+          ) : null}
+        </div>
+      ),
     },
     {
       title: "Sub-Categories",
       dataIndex: "childCount",
       key: "childCount",
-      render: (_, record) => getSubcategoryCount(record),
+      align: "center",
+      sorter: (a, b) => getSubcategoryCount(a) - getSubcategoryCount(b),
+      render: (_, record) => (
+        <Tag color="blue">{formatNumber(getSubcategoryCount(record))}</Tag>
+      ),
     },
     {
       title: "Description",
@@ -518,6 +654,7 @@ const Categories = () => {
           dataSource={parentCategories}
           rowKey={(record) => record?.id || record?._id || record?.slug}
           loading={loading}
+          childrenColumnName="__children"
           pagination={getPaginationConfig("categories")}
         />
       ),
@@ -538,6 +675,7 @@ const Categories = () => {
           dataSource={subCategories}
           rowKey={(record) => record?.id || record?._id || record?.slug}
           loading={loading}
+          childrenColumnName="__children"
           pagination={getPaginationConfig("sub-categories")}
         />
       ),
@@ -687,13 +825,13 @@ const Categories = () => {
           >
             <Input placeholder="Enter category name" />
           </Form.Item>
-          <Form.Item
+          {/* <Form.Item
             name="slug"
             label="Slug"
             rules={[{ required: true, message: "Please enter slug" }]}
           >
             <Input placeholder="category-slug" />
-          </Form.Item>
+          </Form.Item> */}
           <Form.Item name="description" label="Description">
             <Input.TextArea rows={3} placeholder="Add category description" />
           </Form.Item>
@@ -726,69 +864,65 @@ const Categories = () => {
         </Form>
       </Modal>
 
-      <Modal
-        title={viewingCategory?.name || "Category Details"}
+      <Drawer
         open={viewModalVisible}
-        onCancel={closeViewModal}
-        footer={null}
+        onClose={closeViewModal}
         width={520}
+        title={viewingCategory?.name || "Category Details"}
       >
-        {viewingCategory ? (
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Name">
-              {viewingCategory.name || "-"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Slug">
-              {viewingCategory.slug || "-"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Description">
-              {viewingCategory.description?.trim() || "-"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Display Order">
-              {Number.isFinite(viewingCategory.displayOrder)
-                ? viewingCategory.displayOrder
-                : "-"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Parent Category">
-              {viewingCategory.parentName ||
-                getParentName(viewingCategory.parentId)}
-            </Descriptions.Item>
-            <Descriptions.Item label="Child Categories">
-              {Array.isArray(viewingCategory.children) &&
-              viewingCategory.children.length ? (
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 4,
-                  }}
-                >
-                  {viewingCategory.children.map((child) => (
-                    <Tag key={child} color="blue">
-                      {child}
-                    </Tag>
-                  ))}
-                </div>
-              ) : (
-                "-"
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="Icon">
-              {viewingCategory.icon ? (
-                <Tag color="geekblue">{viewingCategory.icon}</Tag>
-              ) : (
-                "-"
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="Products Count">
-              {formatNumber(viewingCategory.productsCount)}
-            </Descriptions.Item>
-            <Descriptions.Item label="Status">
-              {viewingCategory.isActive === false ? "Inactive" : "Active"}
-            </Descriptions.Item>
-          </Descriptions>
-        ) : null}
-      </Modal>
+        {viewingCategory
+          ? (() => {
+              const directChildRecords = getDirectChildRecords(viewingCategory);
+              return (
+                <Descriptions column={1} size="small" bordered>
+                  <Descriptions.Item label="Name">
+                    {viewingCategory.name || "-"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Slug">
+                    {viewingCategory.slug || "-"}
+                  </Descriptions.Item>
+                  {/* <Descriptions.Item label="Child Categories">
+                    {directChildRecords.length ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 4,
+                        }}
+                      >
+                        {directChildRecords.map((child) => (
+                          <Tag
+                            key={
+                              child.id || child._id || child.slug || child.name
+                            }
+                            color="#3f8600"
+                          >
+                            {child.name || child.slug}
+                          </Tag>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
+                  </Descriptions.Item> */}
+                  <Descriptions.Item label="Icon">
+                    {viewingCategory.icon ? (
+                      <IconPreview uri={viewingCategory.icon} size={64} />
+                    ) : (
+                      "-"
+                    )}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Products Count">
+                    {formatNumber(viewingCategory.productsCount)}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Status">
+                    {viewingCategory.isActive === false ? "Inactive" : "Active"}
+                  </Descriptions.Item>
+                </Descriptions>
+              );
+            })()
+          : null}
+      </Drawer>
     </div>
   );
 };

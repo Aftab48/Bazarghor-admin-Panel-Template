@@ -7,26 +7,33 @@ import {
   Tag,
   Image,
   message,
-  Dropdown,
   Select,
   Modal,
+  Drawer,
+  Card,
   Form,
   InputNumber,
+  Descriptions,
 } from "antd";
 
 const { TextArea } = Input;
 import {
   SearchOutlined,
   PlusOutlined,
-  MoreOutlined,
   EditOutlined,
   DeleteOutlined,
+  EyeOutlined,
   ShoppingOutlined,
   CheckCircleOutlined,
   SafetyCertificateOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { productsAPI, categoriesAPI, vendorsAPI, storeAPI } from "../../services/api";
+import {
+  productsAPI,
+  categoriesAPI,
+  vendorsAPI,
+  storeAPI,
+} from "../../services/api";
 import useDebounce from "../../hooks/useDebounce";
 
 const numberFormatter = new Intl.NumberFormat("en-IN");
@@ -59,15 +66,47 @@ const Products = () => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewData, setViewData] = useState(null);
   const [vendors, setVendors] = useState([]);
   const [stores, setStores] = useState([]);
-  const [selectedVendorId, setSelectedVendorId] = useState(null);
+  const [addSelectedVendorId, setAddSelectedVendorId] = useState(null);
+  const [editSelectedVendorId, setEditSelectedVendorId] = useState(null);
   const [form] = Form.useForm();
   const [addForm] = Form.useForm();
+
+  const addSelectedCategoryId = Form.useWatch("category", addForm);
+  const editSelectedCategoryId = Form.useWatch("category", form);
 
   const debouncedSearch = useDebounce(searchText, 400);
   const hasInitialized = useRef(false);
   const pageSizeRef = useRef(10);
+
+  const toIdString = (value) => {
+    if (value === undefined || value === null) return "";
+    return String(value);
+  };
+
+  const extractArray = (result) => {
+    if (Array.isArray(result)) return result;
+    if (Array.isArray(result?.data)) return result.data;
+    if (Array.isArray(result?.data?.data)) return result.data.data;
+    if (Array.isArray(result?.data?.docs)) return result.data.docs;
+    return [];
+  };
+
+  const normalizeCategory = (category) => {
+    if (!category) return null;
+    const id = category._id || category.id || category.value;
+    const parentId = category.parentCategory || null;
+    return {
+      ...category,
+      id: id ? toIdString(id) : "",
+      parentId: parentId ? toIdString(parentId) : null,
+      name: category.name || category.categoryName || category.title || "",
+    };
+  };
 
   const normalizeProduct = (product) => {
     if (!product) return null;
@@ -97,6 +136,16 @@ const Products = () => {
       product.category?.categoryName ||
       product.categoryName;
 
+    const storeId =
+      product.storeId?._id || product.storeId?.id || product.storeId;
+    const vendorId =
+      product.vendorId?._id || product.vendorId?.id || product.vendorId;
+    const subcategoryId =
+      product.subcategory?._id ||
+      product.subcategory?.id ||
+      product.subcategoryId ||
+      product.subcategory;
+
     return {
       ...product,
       id: product._id || product.id,
@@ -108,6 +157,13 @@ const Products = () => {
       primaryImage,
       quantity: product.quantity ?? product.stock,
       status: product.status,
+      storeId: storeId ? toIdString(storeId) : "",
+      vendorId: vendorId ? toIdString(vendorId) : "",
+      subcategoryId: subcategoryId ? toIdString(subcategoryId) : "",
+      weight: product.weight ?? product.netWeight,
+      weightUnit: product.weightUnit || product.unit,
+      isVeg: product.isVeg,
+      isPacked: product.isPacked,
     };
   };
 
@@ -134,20 +190,64 @@ const Products = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, selectedCategory]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = async ({ search = searchText } = {}) => {
+    setLoading(true);
     try {
-      const categoriesResult = await categoriesAPI.getAll();
-      const safeCategories = Array.isArray(categoriesResult?.data)
-        ? categoriesResult.data
-        : Array.isArray(categoriesResult?.data?.data)
-        ? categoriesResult.data.data
-        : Array.isArray(categoriesResult)
-        ? categoriesResult
-        : [];
-      setCategories(safeCategories);
+      const params = {
+        limit: 10000, // Request a high limit to get all categories
+        page: 1,
+      };
+      const trimmedSearch = (search || "").trim();
+      if (trimmedSearch) {
+        params.search = trimmedSearch;
+      }
+
+      const result = await categoriesAPI.getAll(params);
+
+      // Handle paginated response structure
+      let raw = [];
+      if (Array.isArray(result?.data)) {
+        raw = result.data;
+      } else if (Array.isArray(result?.data?.data)) {
+        raw = result.data.data;
+      } else if (Array.isArray(result?.data?.docs)) {
+        raw = result.data.docs;
+      } else if (Array.isArray(result)) {
+        raw = result;
+      }
+
+      const normalized = raw.map((c) => normalizeCategory(c)).filter(Boolean);
+
+      setCategories(normalized);
     } catch (error) {
       message.error("Failed to fetch categories");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    const initialize = async () => {
+      await fetchCategories();
+      hasInitialized.current = true;
+    };
+    initialize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchVendorsAndStores = async () => {
+    const [vendorsData, storesData] = await Promise.all([
+      vendorsAPI.getAll(),
+      storeAPI.getAll(),
+    ]);
+
+    const vendorsList = extractArray(vendorsData);
+    const storesList = extractArray(storesData);
+
+    setVendors(vendorsList);
+    setStores(storesList);
+
+    return { vendorsList, storesList };
   };
 
   const fetchProducts = async ({
@@ -219,7 +319,8 @@ const Products = () => {
   const handleDelete = async (productId) => {
     Modal.confirm({
       title: "Delete Product",
-      content: "Are you sure you want to delete this product? This action cannot be undone.",
+      content:
+        "Are you sure you want to delete this product? This action cannot be undone.",
       okText: "Yes, Delete",
       cancelText: "Cancel",
       okType: "danger",
@@ -240,19 +341,50 @@ const Products = () => {
 
   const handleEdit = async (product) => {
     try {
+      if (!vendors.length || !stores.length) {
+        await fetchVendorsAndStores();
+      }
       // Fetch full product details
       const productDetails = await productsAPI.getById(product.id);
       // extractResponseData returns the data property, so productDetails should be the product object
       const productData = productDetails?.data || productDetails || product;
-      
+
+      const normalized = normalizeProduct(productData) || {};
+      const vendorId = normalized.vendorId || "";
+      const storeId = normalized.storeId || "";
+      setEditSelectedVendorId(vendorId || null);
+
       setEditingProduct({ ...productData, id: product.id });
       form.setFieldsValue({
-        productName: productData.productName || productData.name || product.name,
-        productDescription: productData.productDescription || productData.description || product.description || "",
+        productName:
+          productData.productName || productData.name || product.name,
+        productDescription:
+          productData.productDescription ||
+          productData.description ||
+          product.description ||
+          "",
         quantity: productData.quantity ?? product.quantity ?? 0,
         price: productData.price ?? product.price ?? 0,
         brandName: productData.brandName || product.brandName || "",
-        category: productData.category?._id || productData.categoryId || productData.category || product.categoryId || product.category || null,
+        category:
+          productData.category?._id ||
+          productData.categoryId ||
+          productData.category ||
+          product.categoryId ||
+          product.category ||
+          null,
+        subcategory:
+          productData.subcategory?._id ||
+          productData.subcategoryId ||
+          productData.subcategory ||
+          null,
+        vendorId: vendorId || null,
+        storeId: storeId || null,
+        weight: normalized.weight ?? null,
+        weightUnit: normalized.weightUnit || "",
+        isVeg: typeof normalized.isVeg === "boolean" ? normalized.isVeg : null,
+        isPacked:
+          typeof normalized.isPacked === "boolean" ? normalized.isPacked : null,
         status: productData.status || product.status || "in_stock",
       });
       setEditModalVisible(true);
@@ -263,15 +395,40 @@ const Products = () => {
       setEditingProduct(product);
       form.setFieldsValue({
         productName: product.name || product.productName,
-        productDescription: product.description || product.productDescription || "",
+        productDescription:
+          product.description || product.productDescription || "",
         quantity: product.quantity ?? 0,
         price: product.price ?? 0,
         brandName: product.brandName || "",
         category: product.categoryId || product.category || null,
+        subcategory: product.subcategoryId || product.subcategory || null,
         status: product.status || "in_stock",
       });
       setEditModalVisible(true);
     }
+  };
+
+  const handleView = async (product) => {
+    setViewLoading(true);
+    setViewOpen(true);
+    try {
+      if (!vendors.length || !stores.length) {
+        await fetchVendorsAndStores();
+      }
+      const productDetails = await productsAPI.getById(product.id);
+      const productData = productDetails?.data || productDetails || product;
+      const normalized = normalizeProduct(productData) || product;
+      setViewData(normalized);
+    } catch {
+      setViewData(product);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeViewModal = () => {
+    setViewOpen(false);
+    setViewData(null);
   };
 
   const handleEditSubmit = async (values) => {
@@ -284,7 +441,7 @@ const Products = () => {
       setLoading(true);
       // Create FormData for multipart/form-data
       const formData = new FormData();
-      
+
       Object.keys(values).forEach((key) => {
         if (values[key] !== undefined && values[key] !== null) {
           if (key === "productImages" && Array.isArray(values[key])) {
@@ -324,23 +481,10 @@ const Products = () => {
   const handleAdd = async () => {
     try {
       // Fetch vendors and stores for the form
-      const [vendorsData, storesData] = await Promise.all([
-        vendorsAPI.getAll(),
-        storeAPI.getAll(),
-      ]);
+      await fetchVendorsAndStores();
 
-      const vendorsList = Array.isArray(vendorsData) ? vendorsData : [];
-      const storesList = Array.isArray(storesData?.data) 
-        ? storesData.data 
-        : Array.isArray(storesData) 
-        ? storesData 
-        : [];
-
-      setVendors(vendorsList);
-      setStores(storesList);
-      
       addForm.resetFields();
-      setSelectedVendorId(null);
+      setAddSelectedVendorId(null);
       addForm.setFieldsValue({
         status: "in_stock",
         quantity: 0,
@@ -355,7 +499,7 @@ const Products = () => {
 
   const handleAddCancel = () => {
     setAddModalVisible(false);
-    setSelectedVendorId(null);
+    setAddSelectedVendorId(null);
     addForm.resetFields();
   };
 
@@ -364,7 +508,7 @@ const Products = () => {
       setLoading(true);
       // Create FormData for multipart/form-data
       const formData = new FormData();
-      
+
       Object.keys(values).forEach((key) => {
         if (values[key] !== undefined && values[key] !== null) {
           if (key === "productImages" && Array.isArray(values[key])) {
@@ -394,58 +538,75 @@ const Products = () => {
     }
   };
 
-  const handleVendorChange = (vendorId) => {
-    setSelectedVendorId(vendorId);
+  const getVendorStores = (vendorId) => {
+    const vendorIdStr = toIdString(vendorId);
+    if (!vendorIdStr) return [];
+    return stores.filter((store) => {
+      const storeVendorId =
+        store.vendorId?._id || store.vendorId?.id || store.vendorId;
+      return toIdString(storeVendorId) === vendorIdStr;
+    });
+  };
+
+  const handleAddVendorChange = (vendorId) => {
+    const vendorIdStr = vendorId ? toIdString(vendorId) : "";
+    setAddSelectedVendorId(vendorIdStr || null);
     if (!vendorId) {
       addForm.setFieldsValue({ storeId: undefined });
       return;
     }
-    
-    // Filter stores by selected vendor
-    const vendorStores = stores.filter((store) => {
-      const storeVendorId = store.vendorId?._id || store.vendorId?.id || store.vendorId;
-      const storeVendorIdStr = String(storeVendorId || "");
-      const vendorIdStr = String(vendorId || "");
-      return storeVendorIdStr === vendorIdStr;
-    });
-    
+
+    const vendorStores = getVendorStores(vendorIdStr);
+
     // If vendor has stores, auto-select first store, otherwise clear store selection
     if (vendorStores.length > 0) {
-      const firstStoreId = vendorStores[0].id || vendorStores[0]._id || vendorStores[0].storeId;
-      addForm.setFieldsValue({ storeId: firstStoreId });
+      const firstStoreId =
+        vendorStores[0].id || vendorStores[0]._id || vendorStores[0].storeId;
+      addForm.setFieldsValue({ storeId: toIdString(firstStoreId) });
     } else {
       addForm.setFieldsValue({ storeId: undefined });
       message.warning("No stores found for this vendor");
     }
   };
 
-  const getFilteredStores = () => {
-    if (!selectedVendorId) return stores;
-    return stores.filter((store) => {
-      const storeVendorId = store.vendorId?._id || store.vendorId?.id || store.vendorId;
-      const storeVendorIdStr = String(storeVendorId || "");
-      const vendorIdStr = String(selectedVendorId || "");
-      return storeVendorIdStr === vendorIdStr;
-    });
+  const handleEditVendorChange = (vendorId) => {
+    const vendorIdStr = vendorId ? toIdString(vendorId) : "";
+    setEditSelectedVendorId(vendorIdStr || null);
+    if (!vendorIdStr) {
+      form.setFieldsValue({ storeId: undefined });
+      return;
+    }
+    const vendorStores = getVendorStores(vendorIdStr);
+    if (vendorStores.length === 1) {
+      const onlyStoreId =
+        vendorStores[0].id || vendorStores[0]._id || vendorStores[0].storeId;
+      form.setFieldsValue({ storeId: toIdString(onlyStoreId) });
+    }
   };
 
-  const getActionMenu = (record) => ({
-    items: [
-      {
-        key: "edit",
-        icon: <EditOutlined />,
-        label: "Edit",
-        onClick: () => handleEdit(record),
-      },
-      {
-        key: "delete",
-        icon: <DeleteOutlined />,
-        label: "Delete",
-        danger: true,
-        onClick: () => handleDelete(record.id),
-      },
-    ],
-  });
+  const getFilteredStores = (vendorId) => {
+    const vendorIdStr = toIdString(vendorId);
+    if (!vendorIdStr) return stores;
+    return getVendorStores(vendorIdStr);
+  };
+
+  const getCategoryName = (categoryId) => {
+    const key = toIdString(categoryId);
+    if (!key) return "-";
+    const found = categories.find((c) => toIdString(c.id) === key);
+    return found?.name || "-";
+  };
+
+  const getSubcategoryOptions = (parentId) => {
+    const parentKey = toIdString(parentId);
+    if (!parentKey) return [];
+    return categories
+      .filter((cat) => cat.parentId && toIdString(cat.parentId) === parentKey)
+      .map((cat) => ({
+        label: cat.name,
+        value: toIdString(cat.id),
+      }));
+  };
 
   const columns = [
     {
@@ -484,14 +645,23 @@ const Products = () => {
       responsive: ["sm", "md", "lg"],
       render: (_, record) => {
         const category =
-          record.categoryName ||
-          categories.find(
-            (c) =>
-              c.id === record.categoryId ||
-              c._id === record.categoryId ||
-              c.value === record.categoryId
-          )?.name;
-        return category ? <Tag>{category}</Tag> : "-";
+          record.categoryName || getCategoryName(record.categoryId);
+        return category ? (
+          <span
+            style={{
+              backgroundColor: "#f0f0f0",
+              color: "#3c2f3d",
+              borderRadius: "4px",
+              fontSize: "11px",
+              fontWeight: "bolder",
+              padding: "5px",
+            }}
+          >
+            {category}
+          </span>
+        ) : (
+          "-"
+        );
       },
     },
     {
@@ -569,9 +739,32 @@ const Products = () => {
       title: "Actions",
       key: "actions",
       render: (_, record) => (
-        <Dropdown menu={getActionMenu(record)} trigger={["click"]}>
-          <Button icon={<MoreOutlined />} />
-        </Dropdown>
+        <Space size="small">
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => handleView(record)}
+            title="View"
+            style={{ color: "#9dda52" }}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+            title="Edit"
+            style={{ color: "#ffbc2c" }}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+            title="Delete"
+            danger
+          />
+        </Space>
       ),
     },
   ];
@@ -760,14 +953,16 @@ const Products = () => {
         >
           <Select
             placeholder="Filter by category"
-            style={{ minWidth: 200 }}
+            style={{ minWidth: 400 }}
             allowClear
             value={selectedCategory}
             onChange={setSelectedCategory}
-            options={categories.map((cat) => ({
-              label: cat.name || cat.categoryName || cat.title,
-              value: cat.id || cat._id || cat.value,
-            }))}
+            options={categories
+              .filter((cat) => !cat.parentId)
+              .map((cat) => ({
+                label: cat.name,
+                value: toIdString(cat.id),
+              }))}
           />
         </Space>
 
@@ -802,6 +997,19 @@ const Products = () => {
         cancelText="Cancel"
         width={600}
         confirmLoading={loading}
+        okButtonProps={{
+          style: {
+            backgroundColor: "#9dda52",
+            borderColor: "#9dda52",
+            color: "#3c2f3d",
+          },
+        }}
+        cancelButtonProps={{
+          style: {
+            backgroundColor: "#3c2f3d",
+            color: "#f0f0f0",
+          },
+        }}
       >
         <Form
           form={addForm}
@@ -813,63 +1021,52 @@ const Products = () => {
             price: 0,
           }}
         >
-          <Form.Item
-            name="vendorId"
-            label="Vendor"
-            rules={[{ required: true, message: "Please select a vendor" }]}
-          >
+          <Form.Item name="vendorId" label="Vendor">
             <Select
               placeholder="Select vendor"
               showSearch
               filterOption={(input, option) =>
-                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
-              onChange={handleVendorChange}
+              onChange={handleAddVendorChange}
               options={vendors.map((vendor) => ({
-                label: `${vendor.firstName || ""} ${vendor.lastName || ""}`.trim() || vendor.email || vendor.businessName,
-                value: vendor.id || vendor._id || vendor.vendorId,
+                label:
+                  `${vendor.firstName || ""} ${vendor.lastName || ""}`.trim() ||
+                  vendor.email ||
+                  vendor.businessName,
+                value: toIdString(vendor.id || vendor._id || vendor.vendorId),
               }))}
             />
           </Form.Item>
 
-          <Form.Item
-            name="storeId"
-            label="Store"
-            rules={[{ required: true, message: "Please select a store" }]}
-          >
+          <Form.Item name="storeId" label="Store">
             <Select
-              placeholder={selectedVendorId ? "Select store for this vendor" : "Select vendor first"}
-              showSearch
-              disabled={!selectedVendorId}
-              filterOption={(input, option) =>
-                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+              placeholder={
+                addSelectedVendorId
+                  ? "Select store for this vendor"
+                  : "Select vendor first"
               }
-              options={getFilteredStores().map((store) => ({
+              showSearch
+              disabled={!addSelectedVendorId}
+              filterOption={(input, option) =>
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              options={getFilteredStores(addSelectedVendorId).map((store) => ({
                 label: store.storeName || store.businessName || store.name,
-                value: store.id || store._id || store.storeId,
+                value: toIdString(store.id || store._id || store.storeId),
               }))}
             />
           </Form.Item>
 
-          <Form.Item
-            name="productName"
-            label="Product Name"
-            rules={[
-              { required: true, message: "Please enter product name" },
-              { min: 2, message: "Product name must be at least 2 characters" },
-              { max: 200, message: "Product name cannot exceed 200 characters" },
-            ]}
-          >
+          <Form.Item name="productName" label="Product Name">
             <Input placeholder="Enter product name" />
           </Form.Item>
 
-          <Form.Item
-            name="productDescription"
-            label="Description"
-            rules={[
-              { max: 5000, message: "Description cannot exceed 5000 characters" },
-            ]}
-          >
+          <Form.Item name="productDescription" label="Description">
             <TextArea
               rows={4}
               placeholder="Enter product description"
@@ -878,63 +1075,91 @@ const Products = () => {
             />
           </Form.Item>
 
-          <Form.Item
-            name="brandName"
-            label="Brand Name"
-            rules={[
-              { required: true, message: "Please enter brand name" },
-              { min: 1, message: "Brand name must be at least 1 character" },
-              { max: 120, message: "Brand name cannot exceed 120 characters" },
-            ]}
-          >
+          <Form.Item name="brandName" label="Brand Name">
             <Input placeholder="Enter brand name" />
           </Form.Item>
 
-          <Form.Item
-            name="category"
-            label="Category"
-            rules={[{ required: true, message: "Please select a category" }]}
-          >
+          <Form.Item name="category" label="Category">
             <Select
               placeholder="Select category"
               showSearch
+              onChange={() =>
+                addForm.setFieldsValue({ subcategory: undefined })
+              }
               filterOption={(input, option) =>
-                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
               options={categories
                 .filter((cat) => !cat.parentId)
                 .map((cat) => ({
-                  label: cat.name || cat.categoryName || cat.title,
-                  value: cat.id || cat._id || cat.value,
+                  label: cat.name,
+                  value: toIdString(cat.id),
                 }))}
             />
           </Form.Item>
 
           <Form.Item name="subcategory" label="Subcategory">
             <Select
-              placeholder="Select subcategory (optional)"
+              placeholder="Select subcategory"
               showSearch
               allowClear
+              disabled={!addSelectedCategoryId}
               filterOption={(input, option) =>
-                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
-              options={categories
-                .filter((cat) => cat.parentId)
-                .map((cat) => ({
-                  label: cat.name || cat.categoryName || cat.title,
-                  value: cat.id || cat._id || cat.value,
-                }))}
+              options={getSubcategoryOptions(addSelectedCategoryId)}
             />
           </Form.Item>
 
-          <Form.Item
-            name="price"
-            label="Price (₹)"
-            rules={[
-              { required: true, message: "Please enter price" },
-              { type: "number", min: 0, message: "Price cannot be negative" },
-            ]}
-          >
+          <Form.Item name="weight" label="Weight">
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="Enter weight"
+              min={0}
+              step={0.01}
+            />
+          </Form.Item>
+
+          <Form.Item name="weightUnit" label="Weight Unit">
+            <Select
+              placeholder="Select unit"
+              options={[
+                { label: "g", value: "g" },
+                { label: "kg", value: "kg" },
+                { label: "ml", value: "ml" },
+                { label: "l", value: "l" },
+                { label: "pcs", value: "pcs" },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item name="isVeg" label="Is Veg?">
+            <Select
+              allowClear
+              placeholder="Select"
+              options={[
+                { label: "Yes", value: true },
+                { label: "No", value: false },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item name="isPacked" label="Is Packed?">
+            <Select
+              allowClear
+              placeholder="Select"
+              options={[
+                { label: "Yes", value: true },
+                { label: "No", value: false },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item name="price" label="Price (₹)">
             <InputNumber
               style={{ width: "100%" }}
               placeholder="Enter price"
@@ -944,18 +1169,7 @@ const Products = () => {
             />
           </Form.Item>
 
-          <Form.Item
-            name="quantity"
-            label="Quantity"
-            rules={[
-              { required: true, message: "Please enter quantity" },
-              {
-                type: "number",
-                min: 0,
-                message: "Quantity cannot be negative",
-              },
-            ]}
-          >
+          <Form.Item name="quantity" label="Quantity">
             <InputNumber
               style={{ width: "100%" }}
               placeholder="Enter quantity"
@@ -984,6 +1198,18 @@ const Products = () => {
         cancelText="Cancel"
         width={600}
         confirmLoading={loading}
+        okButtonProps={{
+          style: {
+            backgroundColor: "#9dda52",
+            color: "#3c2f3d",
+          },
+        }}
+        cancelButtonProps={{
+          style: {
+            backgroundColor: "#3c2f3d",
+            color: "#f0f0f0",
+          },
+        }}
       >
         <Form
           form={form}
@@ -993,25 +1219,52 @@ const Products = () => {
             status: "in_stock",
           }}
         >
-          <Form.Item
-            name="productName"
-            label="Product Name"
-            rules={[
-              { required: true, message: "Please enter product name" },
-              { min: 2, message: "Product name must be at least 2 characters" },
-              { max: 200, message: "Product name cannot exceed 200 characters" },
-            ]}
-          >
+          <Form.Item name="vendorId" label="Vendor">
+            <Select
+              placeholder="Select vendor"
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              onChange={handleEditVendorChange}
+              options={vendors.map((vendor) => ({
+                label:
+                  `${vendor.firstName || ""} ${vendor.lastName || ""}`.trim() ||
+                  vendor.email ||
+                  vendor.businessName,
+                value: toIdString(vendor.id || vendor._id || vendor.vendorId),
+              }))}
+            />
+          </Form.Item>
+
+          <Form.Item name="storeId" label="Store">
+            <Select
+              placeholder={
+                editSelectedVendorId
+                  ? "Select store for this vendor"
+                  : "Select vendor first"
+              }
+              showSearch
+              disabled={!editSelectedVendorId}
+              filterOption={(input, option) =>
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              options={getFilteredStores(editSelectedVendorId).map((store) => ({
+                label: store.storeName || store.businessName || store.name,
+                value: toIdString(store.id || store._id || store.storeId),
+              }))}
+            />
+          </Form.Item>
+
+          <Form.Item name="productName" label="Product Name">
             <Input placeholder="Enter product name" />
           </Form.Item>
 
-          <Form.Item
-            name="productDescription"
-            label="Description"
-            rules={[
-              { max: 5000, message: "Description cannot exceed 5000 characters" },
-            ]}
-          >
+          <Form.Item name="productDescription" label="Description">
             <TextArea
               rows={4}
               placeholder="Enter product description"
@@ -1020,46 +1273,89 @@ const Products = () => {
             />
           </Form.Item>
 
-          <Form.Item
-            name="brandName"
-            label="Brand Name"
-            rules={[
-              { required: true, message: "Please enter brand name" },
-              { min: 1, message: "Brand name must be at least 1 character" },
-              { max: 120, message: "Brand name cannot exceed 120 characters" },
-            ]}
-          >
+          <Form.Item name="brandName" label="Brand Name">
             <Input placeholder="Enter brand name" />
           </Form.Item>
 
-          <Form.Item
-            name="category"
-            label="Category"
-            rules={[{ required: true, message: "Please select a category" }]}
-          >
+          <Form.Item name="category" label="Category">
             <Select
               placeholder="Select category"
               showSearch
+              onChange={() => form.setFieldsValue({ subcategory: undefined })}
               filterOption={(input, option) =>
-                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
               options={categories
                 .filter((cat) => !cat.parentId)
                 .map((cat) => ({
-                  label: cat.name || cat.categoryName || cat.title,
-                  value: cat.id || cat._id || cat.value,
+                  label: cat.name,
+                  value: toIdString(cat.id),
                 }))}
             />
           </Form.Item>
 
-          <Form.Item
-            name="price"
-            label="Price (₹)"
-            rules={[
-              { required: true, message: "Please enter price" },
-              { type: "number", min: 0, message: "Price cannot be negative" },
-            ]}
-          >
+          <Form.Item name="subcategory" label="Subcategory">
+            <Select
+              placeholder="Select subcategory (optional)"
+              showSearch
+              allowClear
+              disabled={!editSelectedCategoryId}
+              filterOption={(input, option) =>
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              options={getSubcategoryOptions(editSelectedCategoryId)}
+            />
+          </Form.Item>
+
+          <Form.Item name="weight" label="Weight">
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="Enter weight"
+              min={0}
+              step={0.01}
+            />
+          </Form.Item>
+
+          <Form.Item name="weightUnit" label="Weight Unit">
+            <Select
+              placeholder="Select unit"
+              options={[
+                { label: "g", value: "g" },
+                { label: "kg", value: "kg" },
+                { label: "ml", value: "ml" },
+                { label: "l", value: "l" },
+                { label: "pcs", value: "pcs" },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item name="isVeg" label="Is Veg?">
+            <Select
+              allowClear
+              placeholder="Select"
+              options={[
+                { label: "Yes", value: true },
+                { label: "No", value: false },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item name="isPacked" label="Is Packed?">
+            <Select
+              allowClear
+              placeholder="Select"
+              options={[
+                { label: "Yes", value: true },
+                { label: "No", value: false },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item name="price" label="Price (₹)">
             <InputNumber
               style={{ width: "100%" }}
               placeholder="Enter price"
@@ -1069,18 +1365,7 @@ const Products = () => {
             />
           </Form.Item>
 
-          <Form.Item
-            name="quantity"
-            label="Quantity"
-            rules={[
-              { required: true, message: "Please enter quantity" },
-              {
-                type: "number",
-                min: 0,
-                message: "Quantity cannot be negative",
-              },
-            ]}
-          >
+          <Form.Item name="quantity" label="Quantity">
             <InputNumber
               style={{ width: "100%" }}
               placeholder="Enter quantity"
@@ -1098,6 +1383,108 @@ const Products = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      <Drawer
+        open={viewOpen}
+        onClose={closeViewModal}
+        width={640}
+        title={viewData?.name || "Product Details"}
+      >
+        {viewLoading ? (
+          <Card loading style={{ width: "100%" }} />
+        ) : viewData ? (
+          <Descriptions column={1} size="small" bordered>
+            <Descriptions.Item label="Image">
+              <Image
+                src={viewData.primaryImage}
+                alt={viewData.name || "Product"}
+                width={96}
+                height={96}
+                fallback="https://via.placeholder.com/120?text=No+Image"
+                style={{ objectFit: "cover", borderRadius: 8 }}
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Product Name">
+              {viewData.name || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Brand Name">
+              {viewData.brandName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="SKU">
+              {viewData.sku || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Description">
+              {(viewData.productDescription || viewData.description || "")
+                .toString()
+                .trim() || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Vendor">
+              {viewData.vendorName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Store">
+              {(() => {
+                const storeKey = toIdString(viewData.storeId);
+                if (!storeKey) return "-";
+                const store = stores.find(
+                  (s) => toIdString(s.id || s._id || s.storeId) === storeKey
+                );
+                return (
+                  store?.storeName || store?.businessName || store?.name || "-"
+                );
+              })()}
+            </Descriptions.Item>
+            <Descriptions.Item label="Category">
+              {getCategoryName(viewData.categoryId)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Subcategory">
+              {viewData.subcategoryId
+                ? getCategoryName(viewData.subcategoryId)
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Price">
+              {viewData.price !== undefined && viewData.price !== null
+                ? `₹${viewData.price}`
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Quantity">
+              {viewData.quantity ?? 0}
+            </Descriptions.Item>
+            <Descriptions.Item label="Weight">
+              {viewData.weight !== undefined && viewData.weight !== null
+                ? `${viewData.weight} ${viewData.weightUnit || ""}`.trim()
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Is Veg?">
+              {typeof viewData.isVeg === "boolean"
+                ? viewData.isVeg
+                  ? "Yes"
+                  : "No"
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Is Packed?">
+              {typeof viewData.isPacked === "boolean"
+                ? viewData.isPacked
+                  ? "Yes"
+                  : "No"
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Status">
+              {viewData.status
+                ? (viewData.status || "").replace(/_/g, " ")
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Active">
+              {typeof viewData.isActive === "boolean"
+                ? viewData.isActive
+                  ? "Active"
+                  : "Inactive"
+                : "-"}
+            </Descriptions.Item>
+          </Descriptions>
+        ) : (
+          <div>No data</div>
+        )}
+      </Drawer>
     </div>
   );
 };

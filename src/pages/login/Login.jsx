@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Form, Input, Button, Typography, Card, message, Alert, Radio } from "antd";
+import {
+  Form,
+  Input,
+  Button,
+  Typography,
+  Card,
+  message,
+  Alert,
+  Radio,
+} from "antd";
 import apiClient from "../../services/api";
 import logo from "../../assets/images/Logo.png";
 import { ENDPOINTS } from "../../constants/endpoints";
@@ -56,10 +65,11 @@ function Login() {
           response?.data?.authorization;
         const refreshToken =
           response?.data?.data?.refreshToken || response?.data?.refreshToken;
-        
+
         if (!token) {
           const authHeader =
-            response?.headers?.authorization || response?.headers?.Authorization;
+            response?.headers?.authorization ||
+            response?.headers?.Authorization;
           if (authHeader) {
             const val = String(authHeader).trim();
             token = val.toLowerCase().startsWith("bearer ")
@@ -67,7 +77,7 @@ function Login() {
               : val;
           }
         }
-        
+
         if (!token) {
           message.error("Login failed: token missing");
           setErrorMsg(
@@ -93,7 +103,9 @@ function Login() {
         login({
           token,
           refreshToken,
-          roles: Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean),
+          roles: Array.isArray(userRoles)
+            ? userRoles
+            : [userRoles].filter(Boolean),
           permissions: Array.isArray(userPermissions) ? userPermissions : [],
           user: userId ? { id: userId } : null,
         });
@@ -120,10 +132,11 @@ function Login() {
           response?.data?.authorization;
         const refreshToken =
           response?.data?.data?.refreshToken || response?.data?.refreshToken;
-        
+
         if (!token) {
           const authHeader =
-            response?.headers?.authorization || response?.headers?.Authorization;
+            response?.headers?.authorization ||
+            response?.headers?.Authorization;
           if (authHeader) {
             const val = String(authHeader).trim();
             token = val.toLowerCase().startsWith("bearer ")
@@ -131,7 +144,7 @@ function Login() {
               : val;
           }
         }
-        
+
         if (!token) {
           message.error("Login failed: token missing");
           setErrorMsg(
@@ -143,7 +156,7 @@ function Login() {
         // Extract roles and permissions from response
         const responseData = response?.data?.data || response?.data || response;
         userRoles = responseData?.roles || [];
-        
+
         // Determine exact staff role (ADMIN vs SUB_ADMIN) if not in response
         if (!userRoles || userRoles.length === 0) {
           const rawRole = (
@@ -154,7 +167,7 @@ function Login() {
           )
             .toString()
             .toLowerCase();
-          
+
           if (rawRole.includes("sub")) {
             userRoles = [ROLES.SUB_ADMIN];
           } else if (rawRole.includes("admin")) {
@@ -176,15 +189,14 @@ function Login() {
             }
           }
         }
-        
+
         userPermissions = responseData?.permissions || [];
 
         // Fetch staff profile to get userId
         try {
-          const profileEndpoint =
-            userRoles.includes(ROLES.SUB_ADMIN)
-              ? ENDPOINTS.STAFF_SUB_ADMIN_PROFILE
-              : ENDPOINTS.STAFF_ADMIN_PROFILE;
+          const profileEndpoint = userRoles.includes(ROLES.SUB_ADMIN)
+            ? ENDPOINTS.STAFF_SUB_ADMIN_PROFILE
+            : ENDPOINTS.STAFF_ADMIN_PROFILE;
           const profResp = await apiClient.get(profileEndpoint);
           const raw = profResp?.data;
           const data = raw?.data || raw || profResp;
@@ -195,7 +207,9 @@ function Login() {
         login({
           token,
           refreshToken,
-          roles: Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean),
+          roles: Array.isArray(userRoles)
+            ? userRoles
+            : [userRoles].filter(Boolean),
           permissions: Array.isArray(userPermissions) ? userPermissions : [],
           user: userId ? { id: userId } : null,
         });
@@ -262,25 +276,28 @@ function Login() {
           requiredMark={false}
           validateTrigger={["onSubmit"]}
         >
-          <Form.Item
-            label="Login As"
-            required
-            style={{ marginBottom: 16 }}
-          >
+          <Form.Item label="Login As" required style={{ marginBottom: 16 }}>
             <Radio.Group
               value={loginType}
               onChange={(e) => setLoginType(e.target.value)}
               style={{ width: "100%" }}
             >
-              <Radio.Button value="super_admin" style={{ flex: 1, textAlign: "center" }}>
+              <Radio.Button
+                value="super_admin"
+                style={{ flex: 1, textAlign: "center" }}
+              >
                 Super Admin
               </Radio.Button>
-              <Radio.Button value="staff" style={{ flex: 1, textAlign: "center" }}>
+              <Radio.Button
+                value="staff"
+                style={{ flex: 1, textAlign: "center" }}
+              >
                 Staff (Admin/Sub Admin)
               </Radio.Button>
             </Radio.Group>
             <div style={{ fontSize: "12px", color: "#666", marginTop: 4 }}>
-              {loginType === "staff" && "Backend will determine your role (Admin or Sub Admin) from your account"}
+              {loginType === "staff" &&
+                "Backend will determine your role (Admin or Sub Admin) from your account"}
             </div>
           </Form.Item>
 
@@ -328,4 +345,3 @@ function Login() {
 }
 
 export default Login;
-
