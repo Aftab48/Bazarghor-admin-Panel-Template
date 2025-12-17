@@ -953,13 +953,14 @@ const Products = () => {
         >
           <Select
             placeholder="Filter by category"
-            style={{ minWidth: 400 }}
+            style={{ minWidth: 220, maxWidth: 360, width: "100%", flex: 1 }}
             allowClear
             value={selectedCategory}
-            onChange={setSelectedCategory}
+            onChange={(value) => setSelectedCategory(value || null)}
             options={categories
               .filter((cat) => !cat.parentId)
               .map((cat) => ({
+                key: toIdString(cat.id),
                 label: cat.name,
                 value: toIdString(cat.id),
               }))}

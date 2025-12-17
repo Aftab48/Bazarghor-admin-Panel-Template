@@ -875,13 +875,20 @@ const Categories = () => {
               const directChildRecords = getDirectChildRecords(viewingCategory);
               return (
                 <Descriptions column={1} size="small" bordered>
+                  <Descriptions.Item label="Icon">
+                    {viewingCategory.icon ? (
+                      <IconPreview uri={viewingCategory.icon} size={64} />
+                    ) : (
+                      "-"
+                    )}
+                  </Descriptions.Item>
                   <Descriptions.Item label="Name">
                     {viewingCategory.name || "-"}
                   </Descriptions.Item>
                   <Descriptions.Item label="Slug">
                     {viewingCategory.slug || "-"}
                   </Descriptions.Item>
-                  {/* <Descriptions.Item label="Child Categories">
+                  <Descriptions.Item label="Child Categories">
                     {directChildRecords.length ? (
                       <div
                         style={{
@@ -904,14 +911,8 @@ const Categories = () => {
                     ) : (
                       "-"
                     )}
-                  </Descriptions.Item> */}
-                  <Descriptions.Item label="Icon">
-                    {viewingCategory.icon ? (
-                      <IconPreview uri={viewingCategory.icon} size={64} />
-                    ) : (
-                      "-"
-                    )}
                   </Descriptions.Item>
+
                   <Descriptions.Item label="Products Count">
                     {formatNumber(viewingCategory.productsCount)}
                   </Descriptions.Item>

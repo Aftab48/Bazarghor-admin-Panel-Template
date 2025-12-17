@@ -1,25 +1,21 @@
 import { useState, useEffect } from "react";
-import {
-  Table,
-  Button,
-  Tabs,
-  Space,
-  Select,
-  Modal,
-  Input,
-  message,
-  Tag,
-} from "antd";
+import { Table, Button, Tabs, Space, Select, Modal, message } from "antd";
 import {
   ExportOutlined,
   EyeOutlined,
   UserSwitchOutlined,
+  ShoppingOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CarOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
 import { ordersAPI, deliveryPartnersAPI } from "../../services/api";
 import StatusTag from "../../components/common/StatusTag";
 import { ORDER_STATUS } from "../../constants/statuses";
 
-const { TextArea } = Input;
+const formatter = new Intl.NumberFormat("en-IN");
+const formatNumber = (value) => formatter.format(value ?? 0);
 
 const OrderManagement = () => {
   const [loading, setLoading] = useState(false);
@@ -138,7 +134,7 @@ const OrderManagement = () => {
       dataIndex: "orderNumber",
       key: "orderNumber",
       render: (text) => (
-        <span className="font-medium text-blue-600">{text}</span>
+        <span style={{ fontWeight: 600, color: "#3c2f3d" }}>{text}</span>
       ),
     },
     {
@@ -161,9 +157,10 @@ const OrderManagement = () => {
         ) : (
           <Button
             size="small"
-            type="link"
+            type="text"
             icon={<UserSwitchOutlined />}
             onClick={() => handleAssignAgent(record)}
+            style={{ color: "#9dda52" }}
           >
             Assign
           </Button>
@@ -190,7 +187,7 @@ const OrderManagement = () => {
           value={status}
           onChange={(newStatus) => handleUpdateStatus(record.id, newStatus)}
           size="small"
-          style={{ width: 130 }}
+          style={{ width: 140, maxWidth: "100%" }}
         >
           {Object.entries(ORDER_STATUS).map(([key, value]) => (
             <Select.Option key={value} value={value}>
@@ -217,8 +214,12 @@ const OrderManagement = () => {
       title: "Actions",
       key: "actions",
       render: (_, record) => (
-        <Space>
-          <Button size="small" icon={<EyeOutlined />}>
+        <Space size="small">
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            style={{ color: "#3c2f3d" }}
+          >
             View
           </Button>
           {record.paymentStatus === "completed" &&
@@ -318,38 +319,247 @@ const OrderManagement = () => {
     },
   ];
 
+  const pendingCount = filterOrdersByStatus(ORDER_STATUS.PENDING).length;
+  const ongoingCount = orders.filter((o) =>
+    [
+      ORDER_STATUS.CONFIRMED,
+      ORDER_STATUS.PREPARING,
+      ORDER_STATUS.IN_TRANSIT,
+    ].includes(o.status)
+  ).length;
+  const completedCount = filterOrdersByStatus(ORDER_STATUS.DELIVERED).length;
+  const cancelledCount = filterOrdersByStatus(ORDER_STATUS.CANCELLED).length;
+
+  const orderStatCards = [
+    {
+      key: "total",
+      label: "Total Orders",
+      value: formatNumber(orders.length),
+      icon: <ShoppingOutlined />,
+      iconBg: "#eef2ff",
+      iconColor: "#4f46e5",
+    },
+    {
+      key: "pending",
+      label: "Pending",
+      value: formatNumber(pendingCount),
+      icon: <ClockCircleOutlined />,
+      iconBg: "#fff7ed",
+      iconColor: "#f97316",
+    },
+    {
+      key: "ongoing",
+      label: "Ongoing",
+      value: formatNumber(ongoingCount),
+      icon: <CarOutlined />,
+      iconBg: "#e0f2fe",
+      iconColor: "#0284c7",
+    },
+    {
+      key: "completed",
+      label: "Completed",
+      value: formatNumber(completedCount),
+      icon: <CheckCircleOutlined />,
+      iconBg: "#ecfdf5",
+      iconColor: "#10b981",
+    },
+    {
+      key: "cancelled",
+      label: "Cancelled",
+      value: formatNumber(cancelledCount),
+      icon: <CloseCircleOutlined />,
+      iconBg: "#fef2f2",
+      iconColor: "#ef4444",
+    },
+  ];
+
+  const tableProps = {
+    columns,
+    rowKey: (record) => record?.id || record?._id || record?.orderNumber,
+    loading,
+    size: "middle",
+    scroll: { x: 1100 },
+  };
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Order Management</h1>
-        <Button icon={<ExportOutlined />}>Export Orders</Button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            rowGap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "24px",
+              fontWeight: "bold",
+              color: "#3c2f3d",
+              margin: 0,
+            }}
+          >
+            Order Management
+          </h1>
+
+          <Space
+            className="flex flex-wrap gap-3"
+            size="middle"
+            style={{ justifyContent: "flex-end", flex: 1, minWidth: 220 }}
+          >
+            <Button
+              icon={<ExportOutlined />}
+              style={{
+                background: "#9dda52",
+                borderColor: "#9dda52",
+                color: "#3c2f3d",
+              }}
+            >
+              Export Orders
+            </Button>
+          </Space>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 12,
+            marginTop: 16,
+          }}
+        >
+          {orderStatCards.map((stat) => (
+            <div
+              key={stat.key}
+              style={{
+                background: "#f8fafc",
+                borderRadius: 10,
+                padding: "14px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: stat.iconBg,
+                  color: stat.iconColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                }}
+              >
+                {stat.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: "#6b7280" }}>
+                  {stat.label}
+                </div>
+                <div
+                  style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}
+                >
+                  {stat.value}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <Tabs items={tabItems} />
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
+        }}
+      >
+        <Tabs
+          items={tabItems.map((tab) => ({
+            ...tab,
+            // Wrap each tab's table with consistent, responsive props.
+            children: (
+              <Table
+                {...tableProps}
+                dataSource={tab.children?.props?.dataSource || []}
+              />
+            ),
+          }))}
+        />
+      </div>
 
       <Modal
         title="Assign Delivery Agent"
         open={assignModalVisible}
         onCancel={() => setAssignModalVisible(false)}
         footer={null}
+        width={560}
+        okButtonProps={{
+          style: {
+            backgroundColor: "#9dda52",
+            borderColor: "#9dda52",
+            color: "#3c2f3d",
+          },
+        }}
       >
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {agents.map((agent) => (
             <div
               key={agent.id}
-              className="p-3 border rounded hover:bg-gray-50 cursor-pointer"
               onClick={() => handleAssignSubmit(agent.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleAssignSubmit(agent.id);
+                }
+              }}
+              style={{
+                padding: 12,
+                border: "1px solid #e5e7eb",
+                borderRadius: 10,
+                cursor: "pointer",
+                background: "#ffffff",
+              }}
             >
-              <div className="flex justify-between items-center">
-                <div>
-                  <div className="font-medium">{agent.name}</div>
-                  <div className="text-sm text-gray-500">
-                    {agent.vehicleType} - {agent.phone}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ minWidth: 180 }}>
+                  <div style={{ fontWeight: 600, color: "#111827" }}>
+                    {agent.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    {agent.vehicleType} {agent.phone ? `• ${agent.phone}` : ""}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm">⭐ {agent.rating}</div>
-                  <div className="text-xs text-gray-500">
+
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 12, color: "#3c2f3d" }}>
+                    ⭐ {agent.rating}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
                     {agent.ordersDelivered} deliveries
                   </div>
                 </div>
