@@ -4,15 +4,15 @@ import {
   Button,
   Input,
   Space,
-  Dropdown,
-  Modal,
   message,
-  Tag,
   Avatar,
   Form,
   Select,
   DatePicker,
   Switch,
+  Drawer,
+  Row,
+  Col,
 } from "antd";
 import {
   SearchOutlined,
@@ -408,49 +408,20 @@ const CustomerList = () => {
         />
       </div>
 
-      {/* View Modal */}
-      <Modal
+      {/* View Drawer */}
+      <Drawer
         title="Customer Details"
         open={viewModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setViewModalVisible(false);
           viewForm.resetFields();
           setSelectedRecord(null);
         }}
-        footer={[
-          <Button
-            key="close"
-            onClick={() => {
-              setViewModalVisible(false);
-              viewForm.resetFields();
-              setSelectedRecord(null);
-            }}
-            style={{
-              color: "#ffffff",
-              backgroundColor: "#3c2f3d",
-              borderColor: "#3c2f3d",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#3c2f3d";
-              e.currentTarget.style.color = "#ffffff";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#3c2f3d";
-              e.currentTarget.style.color = "#ffffff";
-            }}
-          >
-            Close
-          </Button>,
-        ]}
-        style={{ maxWidth: "95vw" }}
-        width={600}
-        centered
+        width={560}
+        destroyOnClose
+        placement="right"
       >
-        <Form
-          form={viewForm}
-          layout="vertical"
-          style={{ marginTop: "24px", alignItems: "center" }}
-        >
+        <Form form={viewForm} layout="vertical" style={{ marginTop: 12 }}>
           <Form.Item style={{ textAlign: "center" }}>
             <Avatar
               size={64}
@@ -458,81 +429,124 @@ const CustomerList = () => {
               icon={<UserOutlined />}
             />
           </Form.Item>
-          <Form.Item name="firstName" label="First Name">
-            <Input readOnly size="large" />
-          </Form.Item>
-          <Form.Item name="lastName" label="Last Name">
-            <Input readOnly size="large" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="firstName" label="First Name">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="email" label="Email">
-            <Input readOnly size="large" />
+            <Input readOnly size="middle" />
           </Form.Item>
-          <Form.Item name="mobNo" label="Mobile Number">
-            <Input readOnly size="large" />
-          </Form.Item>
-          <Form.Item name="dob" label="Date of Birth">
-            <Input readOnly size="large" />
-          </Form.Item>
-        </Form>
-      </Modal>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="mobNo" label="Mobile Number">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="dob" label="Date of Birth">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-      {/* Edit Modal */}
-      <Modal
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginTop: 8,
+            }}
+          >
+            <Button
+              onClick={() => {
+                setViewModalVisible(false);
+                viewForm.resetFields();
+                setSelectedRecord(null);
+              }}
+              style={{
+                backgroundColor: "#3c2f3d",
+                color: "#ffffff",
+                borderColor: "#3c2f3d",
+              }}
+            >
+              Close
+            </Button>
+          </div>
+        </Form>
+      </Drawer>
+
+      {/* Edit Drawer */}
+      <Drawer
         title="Edit Customer"
         open={editModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setEditModalVisible(false);
           form.resetFields();
           setSelectedRecord(null);
         }}
-        footer={null}
-        width={600}
-        centered
-        style={{ maxWidth: "95vw" }}
+        width={640}
+        destroyOnClose
+        placement="right"
       >
         <Form
           form={form}
           layout="vertical"
           onFinish={handleUpdate}
-          style={{ marginTop: "24px" }}
+          style={{ marginTop: 12 }}
         >
-          <Form.Item name="firstName" label="First Name">
-            <Input placeholder="Enter first name" size="large" />
-          </Form.Item>
-
-          <Form.Item name="lastName" label="Last Name">
-            <Input placeholder="Enter last name" size="large" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="firstName" label="First Name">
+                <Input placeholder="Enter first name" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input placeholder="Enter last name" size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             name="email"
             label="Email"
             rules={[{ type: "email", message: "Please enter a valid email" }]}
           >
-            <Input placeholder="Enter email" size="large" />
+            <Input placeholder="Enter email" size="middle" />
           </Form.Item>
 
-          <Form.Item
-            name="mobNo"
-            label="Mobile Number"
-            rules={[
-              {
-                pattern: /^[0-9]{10}$/,
-                message: "Please enter a valid 10-digit mobile number",
-              },
-            ]}
-          >
-            <Input placeholder="Enter mobile number" size="large" />
-          </Form.Item>
-
-          <Form.Item name="dob" label="Date of Birth">
-            <DatePicker
-              style={{ width: "100%" }}
-              size="large"
-              format="YYYY-MM-DD"
-              placeholder="Select date of birth"
-            />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="mobNo"
+                label="Mobile Number"
+                rules={[
+                  {
+                    pattern: /^[0-9]{10}$/,
+                    message: "Please enter a valid 10-digit mobile number",
+                  },
+                ]}
+              >
+                <Input placeholder="Enter mobile number" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dob" label="Date of Birth">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  size="middle"
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             name="isActive"
@@ -540,105 +554,84 @@ const CustomerList = () => {
             valuePropName="checked"
             initialValue={false}
           >
-            <Switch
-              checkedChildren="Active"
-              unCheckedChildren="InActive"
-              style={{
-                backgroundColor: form.getFieldValue("isActive")
-                  ? "#23ac6d"
-                  : "#ffbc2c",
-                borderColor: form.getFieldValue("isActive")
-                  ? "#23ac6d"
-                  : "#ffbc2c",
-              }}
-            />
+            <Switch checkedChildren="Active" unCheckedChildren="InActive" />
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: 0, marginTop: "24px" }}>
-            <div
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            <Button
+              onClick={() => {
+                setEditModalVisible(false);
+                form.resetFields();
+                setSelectedRecord(null);
+              }}
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "12px",
-                width: "100%",
+                backgroundColor: "#3c2f3d",
+                color: "#ffffff",
+                borderColor: "#3c2f3d",
               }}
             >
-              <Button
-                onClick={() => {
-                  setEditModalVisible(false);
-                  form.resetFields();
-                  setSelectedRecord(null);
-                }}
-                style={{
-                  backgroundColor: "#3c2f3d",
-                  color: "#ffffff",
-                  borderColor: "#3c2f3d",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={submitting}
-                style={{
-                  background: "#9dda52",
-                  color: "#3c2f3d",
-                }}
-              >
-                Update Customer
-              </Button>
-            </div>
-          </Form.Item>
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={submitting}
+              style={{ background: "#9dda52", color: "#3c2f3d" }}
+            >
+              Update Customer
+            </Button>
+          </div>
         </Form>
-      </Modal>
+      </Drawer>
 
-      {/* Add Modal */}
-      <Modal
+      {/* Add Drawer */}
+      <Drawer
         title="Add New Customer"
         open={addModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setAddModalVisible(false);
           form.resetFields();
         }}
-        footer={null}
-        width={600}
-        centered
-        style={{ maxWidth: "95vw" }}
+        width={640}
+        destroyOnClose
+        placement="right"
       >
         <Form
           form={form}
           layout="vertical"
           onFinish={handleAddCustomer}
-          style={{ marginTop: "24px" }}
+          style={{ marginTop: 12 }}
         >
-          <Form.Item
-            name="firstName"
-            label="First Name"
-            rules={[{ required: true, message: "Please enter first name" }]}
-          >
-            <Input placeholder="Enter first name" size="large" />
-          </Form.Item>
-
-          <Form.Item name="lastName" label="Last Name">
-            <Input placeholder="Enter last name" size="large" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="firstName"
+                label="First Name"
+                rules={[{ required: true, message: "Please enter first name" }]}
+              >
+                <Input placeholder="Enter first name" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input placeholder="Enter last name" size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             name="email"
             label="Email"
             rules={[{ type: "email", message: "Please enter a valid email" }]}
           >
-            <Input placeholder="Enter email" size="large" />
+            <Input placeholder="Enter email" size="middle" />
           </Form.Item>
 
           <Form.Item
@@ -652,7 +645,7 @@ const CustomerList = () => {
               },
             ]}
           >
-            <Input placeholder="Enter mobile number" size="large" />
+            <Input placeholder="Enter mobile number" size="middle" />
           </Form.Item>
 
           <Form.Item
@@ -661,49 +654,38 @@ const CustomerList = () => {
             initialValue="CUSTOMER"
             rules={[{ required: true }]}
           >
-            <Select size="large" disabled>
+            <Select size="middle" disabled>
               <Select.Option value="CUSTOMER">Customer</Select.Option>
             </Select>
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: 0, marginTop: "24px" }}>
-            <Space>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={submitting}
-                style={{
-                  background: "#9dda52",
-                  color: "#3c2f3d",
-                }}
-              >
-                Create Customer
-              </Button>
-              <Button
-                onClick={() => {
-                  setAddModalVisible(false);
-                  form.resetFields();
-                }}
-                style={{
-                  backgroundColor: "#3c2f3d",
-                  color: "#ffffff",
-                  borderColor: "#3c2f3d",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-              >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            <Button
+              onClick={() => {
+                setAddModalVisible(false);
+                form.resetFields();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={submitting}
+              style={{ background: "#9dda52", color: "#3c2f3d" }}
+            >
+              Create Customer
+            </Button>
+          </div>
         </Form>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

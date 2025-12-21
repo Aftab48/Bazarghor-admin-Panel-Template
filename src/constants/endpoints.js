@@ -80,7 +80,9 @@ export const ENDPOINTS = {
   // Orders - Admin
   ADMIN_ORDERS_BY_VENDOR: (vendorId) => `/admin/orders/vendor/${vendorId}`,
   ADMIN_ORDER_HISTORY: (orderId) => `/admin/order/${orderId}/history`,
-
+  ADMIN_GET_ORDERS: "/admin/get-orders-list",
+  ADMIN_GET_ORDER_BY_ID: (orderID) => `/admin/get-orderByID/${orderID}`,
+  ADMIN_UPDATE_ORDER: (orderID) => `/admin/update-orderByID/${orderID}`,
   // Vendor Subscriptions - Admin
   ADMIN_VENDOR_SUBSCRIPTION_CREATE: "/admin/vendor-subscription",
   ADMIN_VENDOR_SUBSCRIPTION_GET_ALL: "/admin/vendor-subscription",

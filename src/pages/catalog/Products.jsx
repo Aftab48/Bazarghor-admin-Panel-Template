@@ -8,12 +8,13 @@ import {
   Image,
   message,
   Select,
-  Modal,
   Drawer,
   Card,
   Form,
   InputNumber,
   Descriptions,
+  Row,
+  Col,
 } from "antd";
 
 const { TextArea } = Input;
@@ -317,26 +318,16 @@ const Products = () => {
   };
 
   const handleDelete = async (productId) => {
-    Modal.confirm({
-      title: "Delete Product",
-      content:
-        "Are you sure you want to delete this product? This action cannot be undone.",
-      okText: "Yes, Delete",
-      cancelText: "Cancel",
-      okType: "danger",
-      onOk: async () => {
-        try {
-          await productsAPI.delete(productId);
-          fetchProducts({
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-          });
-          message.success("Product deleted successfully");
-        } catch {
-          message.error("Failed to delete product");
-        }
-      },
-    });
+    try {
+      await productsAPI.delete(productId);
+      fetchProducts({
+        current: pagination.current,
+        pageSize: pagination.pageSize,
+      });
+      message.success("Product deleted successfully");
+    } catch {
+      message.error("Failed to delete product");
+    }
   };
 
   const handleEdit = async (product) => {
@@ -988,29 +979,13 @@ const Products = () => {
         />
       </div>
 
-      {/* Add Product Modal */}
-      <Modal
+      {/* Add Product Drawer (refreshed design) */}
+      <Drawer
         title="Add New Product"
         open={addModalVisible}
-        onCancel={handleAddCancel}
-        onOk={() => addForm.submit()}
-        okText="Create"
-        cancelText="Cancel"
-        width={600}
-        confirmLoading={loading}
-        okButtonProps={{
-          style: {
-            backgroundColor: "#9dda52",
-            borderColor: "#9dda52",
-            color: "#3c2f3d",
-          },
-        }}
-        cancelButtonProps={{
-          style: {
-            backgroundColor: "#3c2f3d",
-            color: "#f0f0f0",
-          },
-        }}
+        onClose={handleAddCancel}
+        width={720}
+        destroyOnClose
       >
         <Form
           form={addForm}
@@ -1022,50 +997,73 @@ const Products = () => {
             price: 0,
           }}
         >
-          <Form.Item name="vendorId" label="Vendor">
-            <Select
-              placeholder="Select vendor"
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              onChange={handleAddVendorChange}
-              options={vendors.map((vendor) => ({
-                label:
-                  `${vendor.firstName || ""} ${vendor.lastName || ""}`.trim() ||
-                  vendor.email ||
-                  vendor.businessName,
-                value: toIdString(vendor.id || vendor._id || vendor.vendorId),
-              }))}
-            />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="vendorId" label="Vendor">
+                <Select
+                  placeholder="Select vendor"
+                  showSearch
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  onChange={handleAddVendorChange}
+                  options={vendors.map((vendor) => ({
+                    label:
+                      `${vendor.firstName || ""} ${
+                        vendor.lastName || ""
+                      }`.trim() ||
+                      vendor.email ||
+                      vendor.businessName,
+                    value: toIdString(
+                      vendor.id || vendor._id || vendor.vendorId
+                    ),
+                  }))}
+                />
+              </Form.Item>
+            </Col>
 
-          <Form.Item name="storeId" label="Store">
-            <Select
-              placeholder={
-                addSelectedVendorId
-                  ? "Select store for this vendor"
-                  : "Select vendor first"
-              }
-              showSearch
-              disabled={!addSelectedVendorId}
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              options={getFilteredStores(addSelectedVendorId).map((store) => ({
-                label: store.storeName || store.businessName || store.name,
-                value: toIdString(store.id || store._id || store.storeId),
-              }))}
-            />
-          </Form.Item>
+            <Col xs={24} sm={12}>
+              <Form.Item name="storeId" label="Store">
+                <Select
+                  placeholder={
+                    addSelectedVendorId
+                      ? "Select store for this vendor"
+                      : "Select vendor first"
+                  }
+                  showSearch
+                  disabled={!addSelectedVendorId}
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={getFilteredStores(addSelectedVendorId).map(
+                    (store) => ({
+                      label:
+                        store.storeName || store.businessName || store.name,
+                      value: toIdString(store.id || store._id || store.storeId),
+                    })
+                  )}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="productName" label="Product Name">
-            <Input placeholder="Enter product name" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="productName" label="Product Name">
+                <Input placeholder="Enter product name" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <Form.Item name="brandName" label="Brand Name">
+                <Input placeholder="Enter brand name" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="productDescription" label="Description">
             <TextArea
@@ -1076,141 +1074,117 @@ const Products = () => {
             />
           </Form.Item>
 
-          <Form.Item name="brandName" label="Brand Name">
-            <Input placeholder="Enter brand name" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="category" label="Category">
+                <Select
+                  placeholder="Select category"
+                  showSearch
+                  onChange={() =>
+                    addForm.setFieldsValue({ subcategory: undefined })
+                  }
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={categories
+                    .filter((cat) => !cat.parentId)
+                    .map((cat) => ({
+                      label: cat.name,
+                      value: toIdString(cat.id),
+                    }))}
+                />
+              </Form.Item>
+            </Col>
 
-          <Form.Item name="category" label="Category">
-            <Select
-              placeholder="Select category"
-              showSearch
-              onChange={() =>
-                addForm.setFieldsValue({ subcategory: undefined })
-              }
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              options={categories
-                .filter((cat) => !cat.parentId)
-                .map((cat) => ({
-                  label: cat.name,
-                  value: toIdString(cat.id),
-                }))}
-            />
-          </Form.Item>
+            <Col xs={24} sm={12}>
+              <Form.Item name="subcategory" label="Subcategory">
+                <Select
+                  placeholder="Select subcategory"
+                  showSearch
+                  allowClear
+                  disabled={!addSelectedCategoryId}
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={getSubcategoryOptions(addSelectedCategoryId)}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="subcategory" label="Subcategory">
-            <Select
-              placeholder="Select subcategory"
-              showSearch
-              allowClear
-              disabled={!addSelectedCategoryId}
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              options={getSubcategoryOptions(addSelectedCategoryId)}
-            />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={8}>
+              <Form.Item name="price" label="Price (₹)">
+                <InputNumber
+                  style={{ width: "100%" }}
+                  placeholder="Enter price"
+                  min={0}
+                  step={0.01}
+                />
+              </Form.Item>
+            </Col>
 
-          <Form.Item name="weight" label="Weight">
-            <InputNumber
-              style={{ width: "100%" }}
-              placeholder="Enter weight"
-              min={0}
-              step={0.01}
-            />
-          </Form.Item>
+            <Col xs={24} sm={8}>
+              <Form.Item name="quantity" label="Quantity">
+                <InputNumber
+                  style={{ width: "100%" }}
+                  placeholder="Enter quantity"
+                  min={0}
+                  step={1}
+                />
+              </Form.Item>
+            </Col>
 
-          <Form.Item name="weightUnit" label="Weight Unit">
-            <Select
-              placeholder="Select unit"
-              options={[
-                { label: "g", value: "g" },
-                { label: "kg", value: "kg" },
-                { label: "ml", value: "ml" },
-                { label: "l", value: "l" },
-                { label: "pcs", value: "pcs" },
-              ]}
-            />
-          </Form.Item>
+            <Col xs={24} sm={8}>
+              <Form.Item name="status" label="Status">
+                <Select placeholder="Select status">
+                  <Select.Option value="in_stock">In Stock</Select.Option>
+                  <Select.Option value="low_stock">Low Stock</Select.Option>
+                  <Select.Option value="out_of_stock">
+                    Out of Stock
+                  </Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="isVeg" label="Is Veg?">
-            <Select
-              allowClear
-              placeholder="Select"
-              options={[
-                { label: "Yes", value: true },
-                { label: "No", value: false },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item name="isPacked" label="Is Packed?">
-            <Select
-              allowClear
-              placeholder="Select"
-              options={[
-                { label: "Yes", value: true },
-                { label: "No", value: false },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item name="price" label="Price (₹)">
-            <InputNumber
-              style={{ width: "100%" }}
-              placeholder="Enter price"
-              prefix="₹"
-              min={0}
-              step={0.01}
-            />
-          </Form.Item>
-
-          <Form.Item name="quantity" label="Quantity">
-            <InputNumber
-              style={{ width: "100%" }}
-              placeholder="Enter quantity"
-              min={0}
-              step={1}
-            />
-          </Form.Item>
-
-          <Form.Item name="status" label="Status">
-            <Select placeholder="Select status">
-              <Select.Option value="in_stock">In Stock</Select.Option>
-              <Select.Option value="low_stock">Low Stock</Select.Option>
-              <Select.Option value="out_of_stock">Out of Stock</Select.Option>
-            </Select>
-          </Form.Item>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 12,
+            }}
+          >
+            <Button onClick={handleAddCancel}>Cancel</Button>
+            <Button
+              type="primary"
+              onClick={() => addForm.submit()}
+              style={{
+                background: "#9dda52",
+                borderColor: "#9dda52",
+                color: "#3c2f3d",
+              }}
+            >
+              Create Product
+            </Button>
+          </div>
         </Form>
-      </Modal>
+      </Drawer>
 
-      {/* Edit Product Modal */}
-      <Modal
-        title="Edit Product"
+      {/* Edit Product Drawer (refreshed design) */}
+      <Drawer
+        title={
+          editingProduct?.productName || editingProduct?.name || "Edit Product"
+        }
         open={editModalVisible}
-        onCancel={handleEditCancel}
-        onOk={() => form.submit()}
-        okText="Update"
-        cancelText="Cancel"
-        width={600}
-        confirmLoading={loading}
-        okButtonProps={{
-          style: {
-            backgroundColor: "#9dda52",
-            color: "#3c2f3d",
-          },
-        }}
-        cancelButtonProps={{
-          style: {
-            backgroundColor: "#3c2f3d",
-            color: "#f0f0f0",
-          },
-        }}
+        onClose={handleEditCancel}
+        width={720}
+        destroyOnClose
       >
         <Form
           form={form}
@@ -1220,50 +1194,73 @@ const Products = () => {
             status: "in_stock",
           }}
         >
-          <Form.Item name="vendorId" label="Vendor">
-            <Select
-              placeholder="Select vendor"
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              onChange={handleEditVendorChange}
-              options={vendors.map((vendor) => ({
-                label:
-                  `${vendor.firstName || ""} ${vendor.lastName || ""}`.trim() ||
-                  vendor.email ||
-                  vendor.businessName,
-                value: toIdString(vendor.id || vendor._id || vendor.vendorId),
-              }))}
-            />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="vendorId" label="Vendor">
+                <Select
+                  placeholder="Select vendor"
+                  showSearch
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  onChange={handleEditVendorChange}
+                  options={vendors.map((vendor) => ({
+                    label:
+                      `${vendor.firstName || ""} ${
+                        vendor.lastName || ""
+                      }`.trim() ||
+                      vendor.email ||
+                      vendor.businessName,
+                    value: toIdString(
+                      vendor.id || vendor._id || vendor.vendorId
+                    ),
+                  }))}
+                />
+              </Form.Item>
+            </Col>
 
-          <Form.Item name="storeId" label="Store">
-            <Select
-              placeholder={
-                editSelectedVendorId
-                  ? "Select store for this vendor"
-                  : "Select vendor first"
-              }
-              showSearch
-              disabled={!editSelectedVendorId}
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              options={getFilteredStores(editSelectedVendorId).map((store) => ({
-                label: store.storeName || store.businessName || store.name,
-                value: toIdString(store.id || store._id || store.storeId),
-              }))}
-            />
-          </Form.Item>
+            <Col xs={24} sm={12}>
+              <Form.Item name="storeId" label="Store">
+                <Select
+                  placeholder={
+                    editSelectedVendorId
+                      ? "Select store for this vendor"
+                      : "Select vendor first"
+                  }
+                  showSearch
+                  disabled={!editSelectedVendorId}
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={getFilteredStores(editSelectedVendorId).map(
+                    (store) => ({
+                      label:
+                        store.storeName || store.businessName || store.name,
+                      value: toIdString(store.id || store._id || store.storeId),
+                    })
+                  )}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="productName" label="Product Name">
-            <Input placeholder="Enter product name" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="productName" label="Product Name">
+                <Input placeholder="Enter product name" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <Form.Item name="brandName" label="Brand Name">
+                <Input placeholder="Enter brand name" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="productDescription" label="Description">
             <TextArea
@@ -1274,116 +1271,107 @@ const Products = () => {
             />
           </Form.Item>
 
-          <Form.Item name="brandName" label="Brand Name">
-            <Input placeholder="Enter brand name" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="category" label="Category">
+                <Select
+                  placeholder="Select category"
+                  showSearch
+                  onChange={() =>
+                    form.setFieldsValue({ subcategory: undefined })
+                  }
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={categories
+                    .filter((cat) => !cat.parentId)
+                    .map((cat) => ({
+                      label: cat.name,
+                      value: toIdString(cat.id),
+                    }))}
+                />
+              </Form.Item>
+            </Col>
 
-          <Form.Item name="category" label="Category">
-            <Select
-              placeholder="Select category"
-              showSearch
-              onChange={() => form.setFieldsValue({ subcategory: undefined })}
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              options={categories
-                .filter((cat) => !cat.parentId)
-                .map((cat) => ({
-                  label: cat.name,
-                  value: toIdString(cat.id),
-                }))}
-            />
-          </Form.Item>
+            <Col xs={24} sm={12}>
+              <Form.Item name="subcategory" label="Subcategory">
+                <Select
+                  placeholder="Select subcategory (optional)"
+                  showSearch
+                  allowClear
+                  disabled={!editSelectedCategoryId}
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={getSubcategoryOptions(editSelectedCategoryId)}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="subcategory" label="Subcategory">
-            <Select
-              placeholder="Select subcategory (optional)"
-              showSearch
-              allowClear
-              disabled={!editSelectedCategoryId}
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              options={getSubcategoryOptions(editSelectedCategoryId)}
-            />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={8}>
+              <Form.Item name="price" label="Price (₹)">
+                <InputNumber
+                  style={{ width: "100%" }}
+                  placeholder="Enter price"
+                  min={0}
+                  step={0.01}
+                />
+              </Form.Item>
+            </Col>
 
-          <Form.Item name="weight" label="Weight">
-            <InputNumber
-              style={{ width: "100%" }}
-              placeholder="Enter weight"
-              min={0}
-              step={0.01}
-            />
-          </Form.Item>
+            <Col xs={24} sm={8}>
+              <Form.Item name="quantity" label="Quantity">
+                <InputNumber
+                  style={{ width: "100%" }}
+                  placeholder="Enter quantity"
+                  min={0}
+                  step={1}
+                />
+              </Form.Item>
+            </Col>
 
-          <Form.Item name="weightUnit" label="Weight Unit">
-            <Select
-              placeholder="Select unit"
-              options={[
-                { label: "g", value: "g" },
-                { label: "kg", value: "kg" },
-                { label: "ml", value: "ml" },
-                { label: "l", value: "l" },
-                { label: "pcs", value: "pcs" },
-              ]}
-            />
-          </Form.Item>
+            <Col xs={24} sm={8}>
+              <Form.Item name="status" label="Status">
+                <Select placeholder="Select status">
+                  <Select.Option value="in_stock">In Stock</Select.Option>
+                  <Select.Option value="low_stock">Low Stock</Select.Option>
+                  <Select.Option value="out_of_stock">
+                    Out of Stock
+                  </Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="isVeg" label="Is Veg?">
-            <Select
-              allowClear
-              placeholder="Select"
-              options={[
-                { label: "Yes", value: true },
-                { label: "No", value: false },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item name="isPacked" label="Is Packed?">
-            <Select
-              allowClear
-              placeholder="Select"
-              options={[
-                { label: "Yes", value: true },
-                { label: "No", value: false },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item name="price" label="Price (₹)">
-            <InputNumber
-              style={{ width: "100%" }}
-              placeholder="Enter price"
-              prefix="₹"
-              min={0}
-              step={0.01}
-            />
-          </Form.Item>
-
-          <Form.Item name="quantity" label="Quantity">
-            <InputNumber
-              style={{ width: "100%" }}
-              placeholder="Enter quantity"
-              min={0}
-              step={1}
-            />
-          </Form.Item>
-
-          <Form.Item name="status" label="Status">
-            <Select placeholder="Select status">
-              <Select.Option value="in_stock">In Stock</Select.Option>
-              <Select.Option value="low_stock">Low Stock</Select.Option>
-              <Select.Option value="out_of_stock">Out of Stock</Select.Option>
-            </Select>
-          </Form.Item>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 12,
+            }}
+          >
+            <Button onClick={handleEditCancel}>Cancel</Button>
+            <Button
+              type="primary"
+              onClick={() => form.submit()}
+              style={{
+                background: "#9dda52",
+                borderColor: "#9dda52",
+                color: "#3c2f3d",
+              }}
+            >
+              Update Product
+            </Button>
+          </div>
         </Form>
-      </Modal>
+      </Drawer>
 
       <Drawer
         open={viewOpen}

@@ -552,18 +552,36 @@ export const categoriesAPI = {
   },
 
   create: (data) =>
-    apiCall(() => apiClient.post(ENDPOINTS.CATEGORIES_ADD, data), {
-      success: true,
-      message: "Category created successfully",
-      data,
-    }),
+    apiCall(
+      () =>
+        apiClient.post(ENDPOINTS.CATEGORIES_ADD, data, {
+          headers:
+            data instanceof FormData
+              ? { "Content-Type": "multipart/form-data" }
+              : undefined,
+        }),
+      {
+        success: true,
+        message: "Category created successfully",
+        data,
+      }
+    ),
 
   update: (id, data) =>
-    apiCall(() => apiClient.put(ENDPOINTS.CATEGORIES_UPDATE(id), data), {
-      success: true,
-      message: "Category updated successfully",
-      data,
-    }),
+    apiCall(
+      () =>
+        apiClient.put(ENDPOINTS.CATEGORIES_UPDATE(id), data, {
+          headers:
+            data instanceof FormData
+              ? { "Content-Type": "multipart/form-data" }
+              : undefined,
+        }),
+      {
+        success: true,
+        message: "Category updated successfully",
+        data,
+      }
+    ),
 
   delete: (id) =>
     apiCall(() => apiClient.delete(ENDPOINTS.CATEGORIES_DELETE(id)), {
@@ -630,42 +648,54 @@ export const productsAPI = {
 // Note: Backend doesn't have a general /api/orders endpoint for admin
 // Admin can only view orders by vendor: /api/admin/orders/vendor/:vendorId
 export const ordersAPI = {
-  getAll: () => {
-    return mockData.orders;
-  },
-
-  getDetails: (id) =>
+  getAll: (params) =>
     apiCall(
-      () => apiClient.get(`/orders/${id}`),
-      mockData.orders.find((o) => o.id === parseInt(id))
-    ),
-
-  getOrdersByVendor: (vendorId) =>
-    apiCall(
-      () => apiClient.get(ENDPOINTS.ADMIN_ORDERS_BY_VENDOR(vendorId)),
+      () => apiClient.get(ENDPOINTS.ADMIN_GET_ORDERS, { params }),
       mockData.orders
     ),
-
-  getOrderHistory: (orderId) =>
-    apiCall(() => apiClient.get(ENDPOINTS.ADMIN_ORDER_HISTORY(orderId)), []),
-
-  assignAgent: (orderId, agentId) =>
+  getById: (orderID) =>
     apiCall(
-      () => apiClient.post(`/orders/${orderId}/assign-agent`, { agentId }),
-      { success: true, message: "Agent assigned successfully" }
+      () => apiClient.get(ENDPOINTS.ADMIN_GET_ORDER_BY_ID(orderID)),
+      mockData.orders.find((o) => o.id === parseInt(orderID))
     ),
-
-  updateStatus: (orderId, status) =>
-    apiCall(() => apiClient.put(`/orders/${orderId}/status`, { status }), {
+  updateOrder: (orderID, data) =>
+    apiCall(() => apiClient.put(ENDPOINTS.ADMIN_UPDATE_ORDER(orderID), data), {
       success: true,
-      message: "Order status updated",
+      message: "Order updated successfully",
     }),
 
-  processRefund: (orderId, data) =>
-    apiCall(() => apiClient.post(`/orders/${orderId}/refund`, data), {
-      success: true,
-      message: "Refund processed successfully",
-    }),
+  // getDetails: (id) =>
+  //   apiCall(
+  //     () => apiClient.get(ENDPOINTS.ADMIN_ORDERS_BY_VENDOR(`${id}`)),
+  //     mockData.orders.find((o) => o.id === parseInt(id))
+  //   ),
+
+  // getOrdersByVendor: (vendorId) =>
+  //   apiCall(
+  //     () => apiClient.get(ENDPOINTS.ADMIN_ORDERS_BY_VENDOR(vendorId)),
+  //     mockData.orders
+  //   ),
+
+  // getOrderHistory: (orderId) =>
+  //   apiCall(() => apiClient.get(ENDPOINTS.ADMIN_ORDER_HISTORY(orderId)), []),
+
+  // assignAgent: (orderId, agentId) =>
+  //   apiCall(
+  //     () => apiClient.post(`/orders/${orderId}/assign-agent`, { agentId }),
+  //     { success: true, message: "Agent assigned successfully" }
+  //   ),
+
+  // updateStatus: (orderId, status) =>
+  //   apiCall(() => apiClient.put(`/orders/${orderId}/status`, { status }), {
+  //     success: true,
+  //     message: "Order status updated",
+  //   }),
+
+  // processRefund: (orderId, data) =>
+  //   apiCall(() => apiClient.post(`/orders/${orderId}/refund`, data), {
+  //     success: true,
+  //     message: "Refund processed successfully",
+  //   }),
 };
 
 // Transactions API

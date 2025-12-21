@@ -4,13 +4,14 @@ import {
   Button,
   Input,
   Space,
-  Dropdown,
-  Modal,
+  Drawer,
   message,
   Avatar,
   Form,
   Select,
   Switch,
+  Row,
+  Col,
 } from "antd";
 import {
   SearchOutlined,
@@ -98,6 +99,7 @@ const VendorList = () => {
         storeName: data?.storeName || "",
         pinCode: data?.pinCode || "",
         storeAddress: data?.storeAddress || "",
+        profilePicture: data?.profilePicture?.uri || "",
       });
       setViewModalVisible(true);
     } catch (error) {
@@ -445,17 +447,17 @@ const VendorList = () => {
         />
       </div>
 
-      <Modal
+      <Drawer
         title="Add New Vendor"
         open={addModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setAddModalVisible(false);
           form.resetFields();
         }}
-        footer={null}
         width={700}
-        centered
+        placement="right"
         style={{ maxWidth: "95vw" }}
+        bodyStyle={{ paddingBottom: 80 }}
       >
         <Form
           form={form}
@@ -463,79 +465,99 @@ const VendorList = () => {
           onFinish={handleAddVendor}
           style={{ marginTop: "24px" }}
         >
-          <Form.Item
-            name="firstName"
-            label="First Name"
-            rules={[{ required: true, message: "Please enter first name" }]}
-          >
-            <Input placeholder="Enter first name" size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="firstName"
+                label="First Name"
+                rules={[{ required: true, message: "Please enter first name" }]}
+              >
+                <Input placeholder="Enter first name" size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input placeholder="Enter last name" size="large" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="lastName" label="Last Name">
-            <Input placeholder="Enter last name" size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: "Please enter email" },
+                  { type: "email", message: "Please enter a valid email" },
+                ]}
+              >
+                <Input placeholder="Enter email" size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="mobNo"
+                label="Mobile Number"
+                rules={[
+                  { required: true, message: "Please enter mobile number" },
+                  {
+                    pattern: /^[0-9]{10}$/,
+                    message: "Please enter a valid 10-digit mobile number",
+                  },
+                ]}
+              >
+                <Input placeholder="Enter mobile number" size="large" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: "Please enter email" },
-              { type: "email", message: "Please enter a valid email" },
-            ]}
-          >
-            <Input placeholder="Enter email" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="mobNo"
-            label="Mobile Number"
-            rules={[
-              { required: true, message: "Please enter mobile number" },
-              {
-                pattern: /^[0-9]{10}$/,
-                message: "Please enter a valid 10-digit mobile number",
-              },
-            ]}
-          >
-            <Input placeholder="Enter mobile number" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="storeName"
-            label="Store Name"
-            rules={[{ required: true, message: "Please enter store name" }]}
-          >
-            <Input placeholder="Enter store name" size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="storeName"
+                label="Store Name"
+                rules={[{ required: true, message: "Please enter store name" }]}
+              >
+                <Input placeholder="Enter store name" size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="pinCode"
+                label="Pin Code"
+                rules={[
+                  {
+                    pattern: /^[0-9]{6}$/,
+                    message: "Please enter a valid 6-digit pin code",
+                  },
+                ]}
+              >
+                <Input placeholder="Enter pin code" size="large" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="storeAddress" label="Store Address">
             <Input placeholder="Enter store address" size="large" />
           </Form.Item>
 
-          <Form.Item name="cityNm" label="City Name">
-            <Input placeholder="Enter city name" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="pinCode"
-            label="Pin Code"
-            rules={[
-              {
-                pattern: /^[0-9]{6}$/,
-                message: "Please enter a valid 6-digit pin code",
-              },
-            ]}
-          >
-            <Input placeholder="Enter pin code" size="large" />
-          </Form.Item>
-
-          <Form.Item name="gender" label="Gender">
-            <Select placeholder="Select gender" size="large">
-              <Select.Option value="MALE">Male</Select.Option>
-              <Select.Option value="FEMALE">Female</Select.Option>
-              <Select.Option value="OTHER">Other</Select.Option>
-            </Select>
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="cityNm" label="City Name">
+                <Input placeholder="Enter city name" size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="gender" label="Gender">
+                <Select placeholder="Select gender" size="large">
+                  <Select.Option value="MALE">Male</Select.Option>
+                  <Select.Option value="FEMALE">Female</Select.Option>
+                  <Select.Option value="OTHER">Other</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             name="isActive"
@@ -582,59 +604,27 @@ const VendorList = () => {
                   color: "#ffffff",
                   borderColor: "#3c2f3d",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
               >
                 Cancel
               </Button>
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
 
       {/* View Modal */}
-      <Modal
+      <Drawer
         title="View Vendor Details"
         open={viewModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setViewModalVisible(false);
           viewForm.resetFields();
           setSelectedRecord(null);
         }}
-        footer={[
-          <Button
-            key="close"
-            onClick={() => {
-              setViewModalVisible(false);
-              viewForm.resetFields();
-              setSelectedRecord(null);
-            }}
-            style={{
-              color: "#ffffff",
-              backgroundColor: "#3c2f3d",
-              borderColor: "#3c2f3d",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#3c2f3d";
-              e.currentTarget.style.color = "#ffffff";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#3c2f3d";
-              e.currentTarget.style.color = "#ffffff";
-            }}
-          >
-            Close
-          </Button>,
-        ]}
         width={700}
-        centered
+        placement="right"
         style={{ maxWidth: "95vw" }}
+        bodyStyle={{ paddingBottom: 80 }}
       >
         <Form form={viewForm} layout="vertical" style={{ marginTop: "24px" }}>
           <Form.Item style={{ textAlign: "center" }}>
@@ -644,21 +634,35 @@ const VendorList = () => {
               icon={<UserOutlined />}
             />
           </Form.Item>
-          <Form.Item name="firstName" label="First Name">
-            <Input readOnly size="large" />
-          </Form.Item>
-
-          <Form.Item name="lastName" label="Last Name">
-            <Input readOnly size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="firstName" label="First Name">
+                <Input readOnly size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input readOnly size="large" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="email" label="Email">
             <Input readOnly size="large" />
           </Form.Item>
 
-          <Form.Item name="mobNo" label="Mobile Number">
-            <Input readOnly size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="mobNo" label="Mobile Number">
+                <Input readOnly size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="gender" label="Gender">
+                <Input readOnly size="large" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="storeName" label="Store Name">
             <Input readOnly size="large" />
@@ -668,33 +672,51 @@ const VendorList = () => {
             <Input.TextArea readOnly rows={3} size="large" />
           </Form.Item>
 
-          <Form.Item name="cityNm" label="City Name">
-            <Input readOnly size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="cityNm" label="City Name">
+                <Input readOnly size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="pinCode" label="Pin Code">
+                <Input readOnly size="large" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="pinCode" label="Pin Code">
-            <Input readOnly size="large" />
-          </Form.Item>
-
-          <Form.Item name="gender" label="Gender">
-            <Input readOnly size="large" />
-          </Form.Item>
+          <div style={{ marginTop: 12, textAlign: "right" }}>
+            <Button
+              onClick={() => {
+                setViewModalVisible(false);
+                viewForm.resetFields();
+                setSelectedRecord(null);
+              }}
+              style={{
+                color: "#ffffff",
+                backgroundColor: "#3c2f3d",
+                borderColor: "#3c2f3d",
+              }}
+            >
+              Close
+            </Button>
+          </div>
         </Form>
-      </Modal>
+      </Drawer>
 
       {/* Edit Modal */}
-      <Modal
+      <Drawer
         title="Edit Vendor"
         open={editModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setEditModalVisible(false);
           form.resetFields();
           setSelectedRecord(null);
         }}
-        footer={null}
         width={700}
-        centered
+        placement="right"
         style={{ maxWidth: "95vw" }}
+        bodyStyle={{ paddingBottom: 80 }}
       >
         <Form
           form={form}
@@ -702,89 +724,92 @@ const VendorList = () => {
           onFinish={handleUpdate}
           style={{ marginTop: "24px" }}
         >
-          <Form.Item name="firstName" label="First Name">
-            <Input placeholder="Enter first name" size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="firstName" label="First Name">
+                <Input placeholder="Enter first name" size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input placeholder="Enter last name" size="large" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="lastName" label="Last Name">
-            <Input placeholder="Enter last name" size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { type: "email", message: "Please enter a valid email" },
+                ]}
+              >
+                <Input placeholder="Enter email" size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="mobNo"
+                label="Mobile Number"
+                rules={[
+                  {
+                    pattern: /^[0-9]{10}$/,
+                    message: "Please enter a valid 10-digit mobile number",
+                  },
+                ]}
+              >
+                <Input placeholder="Enter mobile number" size="large" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[{ type: "email", message: "Please enter a valid email" }]}
-          >
-            <Input placeholder="Enter email" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="mobNo"
-            label="Mobile Number"
-            rules={[
-              {
-                pattern: /^[0-9]{10}$/,
-                message: "Please enter a valid 10-digit mobile number",
-              },
-            ]}
-          >
-            <Input placeholder="Enter mobile number" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            name="storeName"
-            label="Store Name"
-            rules={[{ required: true, message: "Please enter store name" }]}
-          >
-            <Input placeholder="Enter store name" size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="storeName"
+                label="Store Name"
+                rules={[{ required: true, message: "Please enter store name" }]}
+              >
+                <Input placeholder="Enter store name" size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="pinCode" label="Pin Code">
+                <Input placeholder="Enter pin code" size="large" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="storeAddress" label="Store Address">
             <Input placeholder="Enter store address" size="large" />
           </Form.Item>
 
-          <Form.Item name="cityNm" label="City Name">
-            <Input placeholder="Enter city name" size="large" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="cityNm" label="City Name">
+                <Input placeholder="Enter city name" size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="gender" label="Gender">
+                <Select placeholder="Select gender" size="large">
+                  <Select.Option value="MALE">Male</Select.Option>
+                  <Select.Option value="FEMALE">Female</Select.Option>
+                  <Select.Option value="OTHER">Other</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            name="pinCode"
-            label="Pin Code"
-            rules={[
-              {
-                pattern: /^[0-9]{6}$/,
-                message: "Please enter a valid 6-digit pin code",
-              },
-            ]}
-          >
-            <Input placeholder="Enter pin code" size="large" />
-          </Form.Item>
-
-          <Form.Item name="gender" label="Gender">
-            <Select placeholder="Select gender" size="large">
-              <Select.Option value="MALE">Male</Select.Option>
-              <Select.Option value="FEMALE">Female</Select.Option>
-              <Select.Option value="OTHER">Other</Select.Option>
-            </Select>
-          </Form.Item>
           <Form.Item
             name="isActive"
             label="Active Status"
             valuePropName="checked"
             initialValue={false}
           >
-            <Switch
-              checkedChildren="Active"
-              unCheckedChildren="Inactive"
-              style={{
-                backgroundColor: form.getFieldValue("isActive")
-                  ? "#23ac6d"
-                  : "#ffbc2c",
-                borderColor: form.getFieldValue("isActive")
-                  ? "#23ac6d"
-                  : "#ffbc2c",
-              }}
-            />
+            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0, marginTop: "24px" }}>
@@ -808,14 +833,6 @@ const VendorList = () => {
                   color: "#ffffff",
                   borderColor: "#3c2f3d",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
               >
                 Cancel
               </Button>
@@ -833,7 +850,7 @@ const VendorList = () => {
             </div>
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

@@ -4,13 +4,15 @@ import {
   Button,
   Input,
   Space,
-  Modal,
   message,
   Avatar,
   Form,
   Select,
   DatePicker,
   Switch,
+  Drawer,
+  Row,
+  Col,
 } from "antd";
 import {
   SearchOutlined,
@@ -397,35 +399,40 @@ const DeliveryAgentList = () => {
         />
       </div>
 
-      <Modal
+      {/* Add Delivery Agent Drawer */}
+      <Drawer
         title="Add New Delivery Agent"
         open={addModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setAddModalVisible(false);
           form.resetFields();
         }}
-        footer={null}
-        width={700}
-        centered
-        style={{ maxWidth: "95vw" }}
+        width={680}
+        destroyOnClose
+        placement="right"
       >
         <Form
           form={form}
           layout="vertical"
           onFinish={handleAddAgent}
-          style={{ marginTop: "24px" }}
+          style={{ marginTop: 12 }}
         >
-          <Form.Item
-            name="firstName"
-            label="First Name"
-            rules={[{ required: true, message: "Please enter first name" }]}
-          >
-            <Input placeholder="Enter first name" size="large" />
-          </Form.Item>
-
-          <Form.Item name="lastName" label="Last Name">
-            <Input placeholder="Enter last name" size="large" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="firstName"
+                label="First Name"
+                rules={[{ required: true, message: "Please enter first name" }]}
+              >
+                <Input placeholder="Enter first name" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input placeholder="Enter last name" size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             name="email"
@@ -435,34 +442,38 @@ const DeliveryAgentList = () => {
               { type: "email", message: "Please enter a valid email" },
             ]}
           >
-            <Input placeholder="Enter email" size="large" />
+            <Input placeholder="Enter email" size="middle" />
           </Form.Item>
 
-          <Form.Item
-            name="mobNo"
-            label="Mobile Number"
-            rules={[
-              { required: true, message: "Please enter mobile number" },
-              {
-                pattern: /^[0-9]{10}$/,
-                message: "Please enter a valid 10-digit mobile number",
-              },
-            ]}
-          >
-            <Input placeholder="Enter mobile number" size="large" />
-          </Form.Item>
-
-          <Form.Item name="dob" label="Date of Birth">
-            <DatePicker
-              style={{ width: "100%" }}
-              size="large"
-              format="YYYY-MM-DD"
-              placeholder="Select date of birth"
-            />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="mobNo"
+                label="Mobile Number"
+                rules={[
+                  { required: true, message: "Please enter mobile number" },
+                  {
+                    pattern: /^[0-9]{10}$/,
+                    message: "Please enter a valid 10-digit mobile number",
+                  },
+                ]}
+              >
+                <Input placeholder="Enter mobile number" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dob" label="Date of Birth">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  size="middle"
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="gender" label="Gender">
-            <Select placeholder="Select gender" size="large">
+            <Select placeholder="Select gender" size="middle">
               <Select.Option value="MALE">Male</Select.Option>
               <Select.Option value="FEMALE">Female</Select.Option>
               <Select.Option value="OTHER">Other</Select.Option>
@@ -475,117 +486,137 @@ const DeliveryAgentList = () => {
             initialValue="DELIVERY_PARTNER"
             rules={[{ required: true }]}
           >
-            <Select size="large" disabled>
+            <Select size="middle" disabled>
               <Select.Option value="DELIVERY_PARTNER">
                 Delivery Partner
               </Select.Option>
             </Select>
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: 0, marginTop: "24px" }}>
-            <Space>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={submitting}
-                style={{
-                  background: "#9dda52",
-                  borderColor: "#9dda52",
-                  color: "#3c2f3d",
-                  fontWeight: "bold",
-                }}
-              >
-                Create Delivery Agent
-              </Button>
-              <Button
-                onClick={() => {
-                  setAddModalVisible(false);
-                  form.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            <Button
+              onClick={() => {
+                setAddModalVisible(false);
+                form.resetFields();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={submitting}
+              style={{
+                background: "#9dda52",
+                borderColor: "#9dda52",
+                color: "#3c2f3d",
+                fontWeight: "bold",
+              }}
+            >
+              Create Delivery Agent
+            </Button>
+          </div>
         </Form>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      {/* Edit Delivery Agent Drawer */}
+      <Drawer
         title="Edit Delivery Agent"
         open={editModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setEditModalVisible(false);
           editForm.resetFields();
           setSelectedRecord(null);
         }}
-        footer={null}
-        width={700}
-        centered
-        style={{ maxWidth: "95vw" }}
+        width={680}
+        destroyOnClose
+        placement="right"
       >
         <Form
           form={editForm}
           layout="vertical"
           onFinish={handleUpdate}
-          style={{ marginTop: "24px" }}
+          style={{ marginTop: 12 }}
         >
-          <Form.Item name="firstName" label="First Name">
-            <Input placeholder="Enter first name" size="large" />
-          </Form.Item>
-
-          <Form.Item name="lastName" label="Last Name">
-            <Input placeholder="Enter last name" size="large" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="firstName" label="First Name">
+                <Input placeholder="Enter first name" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input placeholder="Enter last name" size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             name="email"
             label="Email"
             rules={[{ type: "email", message: "Please enter a valid email" }]}
           >
-            <Input placeholder="Enter email" size="large" />
+            <Input placeholder="Enter email" size="middle" />
           </Form.Item>
 
-          <Form.Item
-            name="mobNo"
-            label="Mobile Number"
-            rules={[
-              {
-                pattern: /^[0-9]{10}$/,
-                message: "Please enter a valid 10-digit mobile number",
-              },
-            ]}
-          >
-            <Input placeholder="Enter mobile number" size="large" />
-          </Form.Item>
-
-          <Form.Item name="dob" label="Date of Birth">
-            <DatePicker
-              style={{ width: "100%" }}
-              size="large"
-              format="YYYY-MM-DD"
-              placeholder="Select date of birth"
-            />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="mobNo"
+                label="Mobile Number"
+                rules={[
+                  {
+                    pattern: /^[0-9]{10}$/,
+                    message: "Please enter a valid 10-digit mobile number",
+                  },
+                ]}
+              >
+                <Input placeholder="Enter mobile number" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dob" label="Date of Birth">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  size="middle"
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="gender" label="Gender">
-            <Select placeholder="Select gender" size="large">
+            <Select placeholder="Select gender" size="middle">
               <Select.Option value="MALE">Male</Select.Option>
               <Select.Option value="FEMALE">Female</Select.Option>
               <Select.Option value="OTHER">Other</Select.Option>
             </Select>
           </Form.Item>
 
-          <Form.Item name="vehicleType" label="Vehicle Type">
-            <Input placeholder="Enter vehicle type" size="large" />
-          </Form.Item>
-
-          <Form.Item name="vehicleNo" label="Vehicle Number">
-            <Input placeholder="Enter vehicle number" size="large" />
-          </Form.Item>
-
-          <Form.Item name="driverLicenseNo" label="Driver License No">
-            <Input placeholder="Enter license number" size="large" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col xs={24} sm={8}>
+              <Form.Item name="vehicleType" label="Vehicle Type">
+                <Input placeholder="Enter vehicle type" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="vehicleNo" label="Vehicle Number">
+                <Input placeholder="Enter vehicle number" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="driverLicenseNo" label="Driver License No">
+                <Input placeholder="Enter license number" size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             name="isActive"
@@ -593,110 +624,57 @@ const DeliveryAgentList = () => {
             valuePropName="checked"
             initialValue={false}
           >
-            <Switch
-              checkedChildren="Active"
-              unCheckedChildren="Inactive"
-              style={{
-                backgroundColor: editForm.getFieldValue("isActive")
-                  ? "#23ac6d"
-                  : "#ffbc2c",
-                borderColor: editForm.getFieldValue("isActive")
-                  ? "#23ac6d"
-                  : "#ffbc2c",
-              }}
-            />
+            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: 0, marginTop: "24px" }}>
-            <div
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            <Button
+              onClick={() => {
+                setEditModalVisible(false);
+                editForm.resetFields();
+                setSelectedRecord(null);
+              }}
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "12px",
-                width: "100%",
+                backgroundColor: "#3c2f3d",
+                color: "#ffffff",
+                borderColor: "#3c2f3d",
               }}
             >
-              <Button
-                onClick={() => {
-                  setEditModalVisible(false);
-                  editForm.resetFields();
-                  setSelectedRecord(null);
-                }}
-                style={{
-                  backgroundColor: "#3c2f3d",
-                  color: "#ffffff",
-                  borderColor: "#3c2f3d",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3c2f3d";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={submitting}
-                style={{
-                  background: "#9dda52",
-                  color: "#3c2f3d",
-                }}
-              >
-                Update Agent
-              </Button>
-            </div>
-          </Form.Item>
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={submitting}
+              style={{ background: "#9dda52", color: "#3c2f3d" }}
+            >
+              Update Agent
+            </Button>
+          </div>
         </Form>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      {/* View Delivery Agent Drawer */}
+      <Drawer
         title="Delivery Agent Details"
         open={viewModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setViewModalVisible(false);
           viewForm.resetFields();
           setSelectedRecord(null);
         }}
-        footer={[
-          <Button
-            key="close"
-            onClick={() => {
-              setViewModalVisible(false);
-              viewForm.resetFields();
-              setSelectedRecord(null);
-            }}
-            style={{
-              color: "#ffffff",
-              backgroundColor: "#3c2f3d",
-              borderColor: "#3c2f3d",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#3c2f3d";
-              e.currentTarget.style.color = "#ffffff";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#3c2f3d";
-              e.currentTarget.style.color = "#ffffff";
-            }}
-          >
-            Close
-          </Button>,
-        ]}
-        width={700}
-        centered
-        style={{ maxWidth: "95vw" }}
+        width={560}
+        destroyOnClose
+        placement="right"
       >
-        <Form
-          form={viewForm}
-          layout="vertical"
-          style={{ marginTop: "24px", alignItems: "center" }}
-        >
+        <Form form={viewForm} layout="vertical" style={{ marginTop: 12 }}>
           <Form.Item style={{ textAlign: "center" }}>
             <Avatar
               size={64}
@@ -708,27 +686,60 @@ const DeliveryAgentList = () => {
               icon={<UserOutlined />}
             />
           </Form.Item>
-          <Form.Item name="firstName" label="First Name">
-            <Input readOnly size="large" />
-          </Form.Item>
-
-          <Form.Item name="lastName" label="Last Name">
-            <Input readOnly size="large" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="firstName" label="First Name">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="email" label="Email">
-            <Input readOnly size="large" />
+            <Input readOnly size="middle" />
           </Form.Item>
 
-          <Form.Item name="mobNo" label="Mobile Number">
-            <Input readOnly size="large" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="mobNo" label="Mobile Number">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="gender" label="Gender">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="gender" label="Gender">
-            <Input readOnly size="large" />
-          </Form.Item>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginTop: 8,
+            }}
+          >
+            <Button
+              onClick={() => {
+                setViewModalVisible(false);
+                viewForm.resetFields();
+                setSelectedRecord(null);
+              }}
+              style={{
+                backgroundColor: "#3c2f3d",
+                color: "#ffffff",
+                borderColor: "#3c2f3d",
+              }}
+            >
+              Close
+            </Button>
+          </div>
         </Form>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

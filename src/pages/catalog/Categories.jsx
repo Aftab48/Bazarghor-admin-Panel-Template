@@ -3,8 +3,8 @@ import {
   Table,
   Button,
   Space,
-  Modal,
   Drawer,
+  Upload,
   Form,
   Input,
   InputNumber,
@@ -14,6 +14,8 @@ import {
   message,
   Descriptions,
   Tabs,
+  Row,
+  Col,
 } from "antd";
 import {
   PlusOutlined,
@@ -42,6 +44,8 @@ const Categories = () => {
   const [viewingCategory, setViewingCategory] = useState(null);
   const [activeTab, setActiveTab] = useState("categories");
   const [form] = Form.useForm();
+  const [icon, setIconFile] = useState(null);
+  const [iconPreview, setIconPreview] = useState(null);
   const debouncedSearch = useDebounce(searchText, 400);
   const hasInitialized = useRef(false);
 
@@ -236,6 +240,8 @@ const Categories = () => {
       description: "",
       displayOrder: Number(categories.length || 0) + 1,
     });
+    setIconFile(null);
+    setIconPreview(null);
     setModalVisible(true);
   };
 
@@ -256,6 +262,9 @@ const Categories = () => {
       description: category?.description || "",
       displayOrder: Number(category?.displayOrder ?? 0),
     });
+    // show existing icon (if any) as preview when editing
+    setIconFile(null);
+    setIconPreview(category?.icon || null);
     setModalVisible(true);
   };
 
@@ -347,14 +356,46 @@ const Categories = () => {
         }
       }
 
-      if (editingCategory) {
-        await categoriesAPI.update(editingCategory.id, payload);
-        message.success("Category updated successfully");
+      // If an icon file was selected, send as FormData
+      const file = values.icon || icon;
+      if (file) {
+        const fd = new FormData();
+        // append payload keys
+        Object.keys(payload).forEach((k) => {
+          const v = payload[k];
+          if (Array.isArray(v)) {
+            v.forEach((item) => {
+              if (item !== undefined && item !== null)
+                fd.append(k, String(item));
+            });
+          } else {
+            fd.append(k, v === undefined || v === null ? "" : String(v));
+          }
+        });
+        // append file object
+        const fileObj = file.originFileObj || file;
+        if (fileObj) fd.append("icon", fileObj);
+
+        if (editingCategory) {
+          await categoriesAPI.update(editingCategory.id, fd);
+          message.success("Category updated successfully");
+        } else {
+          await categoriesAPI.create(fd);
+          message.success("Category created successfully");
+        }
       } else {
-        await categoriesAPI.create(payload);
-        message.success("Category created successfully");
+        if (editingCategory) {
+          await categoriesAPI.update(editingCategory.id, payload);
+          message.success("Category updated successfully");
+        } else {
+          await categoriesAPI.create(payload);
+          message.success("Category created successfully");
+        }
       }
+
       setModalVisible(false);
+      setIconFile(null);
+      setIconPreview(null);
       fetchCategories({
         search: debouncedSearch,
       });
@@ -420,7 +461,7 @@ const Categories = () => {
           const trimmed = String(value || "").trim();
           if (!trimmed) return null;
           return {
-            label: child.name || trimmed,
+            label: child.name,
             value: trimmed,
           };
         })
@@ -810,59 +851,173 @@ const Categories = () => {
         />
       </div>
 
-      <Modal
+      {/* Add/Edit Category Drawer (refreshed design) */}
+      <Drawer
         title={editingCategory ? "Edit Category" : "Add Category"}
         open={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        onOk={() => form.submit()}
-        okText="Save"
+        onClose={() => {
+          setModalVisible(false);
+          setIconFile(null);
+          setIconPreview(null);
+          form.resetFields();
+        }}
+        width={680}
+        destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Form.Item
-            name="name"
-            label="Category Name"
-            rules={[{ required: true, message: "Please enter category name" }]}
-          >
-            <Input placeholder="Enter category name" />
-          </Form.Item>
-          {/* <Form.Item
-            name="slug"
-            label="Slug"
-            rules={[{ required: true, message: "Please enter slug" }]}
-          >
-            <Input placeholder="category-slug" />
-          </Form.Item> */}
+          <Row gutter={12}>
+            <Col xs={24} sm={16}>
+              <Form.Item
+                name="name"
+                label="Category Name"
+                rules={[
+                  { required: true, message: "Please enter category name" },
+                ]}
+              >
+                <Input placeholder="Enter category name" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="displayOrder"
+                label="Display Order"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please provide the display order",
+                  },
+                ]}
+              >
+                <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
           <Form.Item name="description" label="Description">
             <Input.TextArea rows={3} placeholder="Add category description" />
           </Form.Item>
+
+          <Form.Item name="icon" label="Icon">
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div
+                style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: 8,
+                  background: "#f8fafc",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                  border: "1px dashed #e5e7eb",
+                }}
+              >
+                {iconPreview ? (
+                  <img
+                    src={iconPreview}
+                    alt="icon"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  <div style={{ color: "#9ca3af", fontSize: 12 }}>No image</div>
+                )}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={() => false}
+                  maxCount={1}
+                  onChange={({ fileList }) => {
+                    const file = fileList && fileList[0] ? fileList[0] : null;
+                    setIconFile(file);
+                    form.setFieldsValue({ icon: file });
+                    if (file && file.originFileObj) {
+                      try {
+                        const url = URL.createObjectURL(file.originFileObj);
+                        setIconPreview(url);
+                      } catch (e) {
+                        setIconPreview(null);
+                      }
+                    } else if (file && file.url) {
+                      setIconPreview(file.url);
+                    } else if (!file) {
+                      setIconPreview(null);
+                    }
+                  }}
+                >
+                  <Button type="default">Choose image</Button>
+                </Upload>
+
+                <div style={{ marginTop: 8, color: "#6b7280", fontSize: 12 }}>
+                  Recommended: 64x64 PNG or JPG — max 1MB
+                </div>
+
+                {(iconPreview || icon) && (
+                  <div style={{ marginTop: 8 }}>
+                    <Button
+                      type="link"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => {
+                        setIconFile(null);
+                        setIconPreview(null);
+                        form.setFieldsValue({ icon: null });
+                      }}
+                    >
+                      Remove image
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Form.Item>
+
           <Form.Item
             name="children"
             label="Child Categories"
-            tooltip="Type a value and press enter to add child categories"
+            tooltip="Select or type child categories"
           >
             <Select
               mode="tags"
-              tokenSeparators={[","]}
-              placeholder="Start typing to add child categories"
+              placeholder="Select or type child category"
               options={childCategoryOptions}
-              allowClear
               optionFilterProp="label"
+              maxTagCount={0}
+              tagRender={() => null}
+              allowClear
             />
           </Form.Item>
-          <Form.Item
-            name="displayOrder"
-            label="Display Order"
-            rules={[
-              {
-                required: true,
-                message: "Please provide the display order",
-              },
-            ]}
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 8,
+            }}
           >
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
+            <Button onClick={() => setModalVisible(false)}>Cancel</Button>
+            <Button
+              type="primary"
+              onClick={() => form.submit()}
+              style={{
+                background: "#9dda52",
+                borderColor: "#9dda52",
+                color: "#3c2f3d",
+              }}
+            >
+              Save Category
+            </Button>
+          </div>
         </Form>
-      </Modal>
+      </Drawer>
 
       <Drawer
         open={viewModalVisible}
