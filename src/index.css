@@ -1,4 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@400;700&family=Instrument+Sans:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
+
+:root {
+  --font-primary: 'Averia Serif Libre', 'Times New Roman', serif;
+  --font-secondary: 'Instrument Sans', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
 
 * {
   margin: 0;
@@ -8,13 +14,81 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #f0f0f0;
+  color: #3c2f3d;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+:where(.ant-typography h1,
+  .ant-typography h2,
+  .ant-typography h3,
+  .ant-typography h4,
+  .ant-typography h5,
+  .ant-typography h6) {
+  font-family: var(--font-primary);
+  color: #3c2f3d;
+}
+
+p,
+span,
+label,
+input,
+textarea,
+button,
+div,
+li,
+:where(.ant-typography, .ant-menu, .ant-btn, .ant-input, .ant-select, .ant-table) {
+  font-family: var(--font-secondary);
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* Remove blue focus shadow/outlines from Ant Design components */
+:where(.ant-input:focus,
+  .ant-input-focused,
+  .ant-input-affix-wrapper:focus,
+  .ant-input-affix-wrapper-focused,
+  .ant-select-selector:focus,
+  .ant-select-focused .ant-select-selector,
+  .ant-picker:focus,
+  .ant-picker-focused,
+  .ant-btn:focus,
+  .ant-btn:active,
+  .ant-btn:focus-visible,
+  .ant-textarea:focus,
+  .ant-textarea-focused) {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Optional: keep border color stable on focus (prevent blue highlight) */
+:where(.ant-input:focus,
+  .ant-input-focused,
+  .ant-input-affix-wrapper:focus,
+  .ant-input-affix-wrapper-focused,
+  .ant-select-selector:focus,
+  .ant-select-focused .ant-select-selector,
+  .ant-picker:focus,
+  .ant-picker-focused,
+  .ant-textarea:focus,
+  .ant-textarea-focused) {
+  border-color: #d9d9d9 !important;
+  /* AntD default neutral border */
+}
+
+/* Button focus border color reset */
+:where(.ant-btn:focus,
+  .ant-btn:active,
+  .ant-btn:focus-visible) {
+  border-color: inherit !important;
 }

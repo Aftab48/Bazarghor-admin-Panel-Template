@@ -1,237 +1,693 @@
-import { useState, useEffect } from 'react';
-import { Table, Button, Input, Space, Dropdown, Modal, message, Tag, Avatar } from 'antd';
+import { useState, useEffect } from "react";
+import {
+  Table,
+  Button,
+  Input,
+  Space,
+  message,
+  Avatar,
+  Form,
+  Select,
+  DatePicker,
+  Switch,
+  Drawer,
+  Row,
+  Col,
+} from "antd";
 import {
   SearchOutlined,
   PlusOutlined,
-  MoreOutlined,
-  CheckCircleOutlined,
-  StopOutlined,
-  LockOutlined,
+  EyeOutlined,
   EditOutlined,
   DeleteOutlined,
   UserOutlined,
-} from '@ant-design/icons';
-import { usersAPI } from '../../services/api';
-import StatusTag from '../../components/common/StatusTag';
+} from "@ant-design/icons";
+import { customersAPI } from "../../services/api";
+import dayjs from "dayjs";
+import StatusTag from "../../components/common/StatusTag";
+import { useAuth } from "../../hooks/useAuth";
+import { ROLES } from "../../constants/permissions";
 
 const CustomerList = () => {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState([]);
-  const [searchText, setSearchText] = useState('');
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [searchText, setSearchText] = useState("");
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [form] = Form.useForm();
+  const [viewForm] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const { roles } = useAuth();
+
+  const canAddCustomer = () => {
+    if (!roles || roles.length === 0) return false;
+    const currentRole = roles[0];
+    const normalizedRole =
+      typeof currentRole === "string"
+        ? currentRole
+        : currentRole?.code || currentRole?.roleCode || String(currentRole);
+    return (
+      normalizedRole === ROLES.SUPER_ADMIN || normalizedRole === ROLES.ADMIN
+    );
+  };
 
   useEffect(() => {
     fetchCustomers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const data = await usersAPI.getCustomers();
-      setCustomers(data);
-      setPagination({ ...pagination, total: data.length });
-    } catch {
-      message.error('Failed to fetch customers');
+      const data = await customersAPI.getAll();
+      if (Array.isArray(data)) {
+        setCustomers(data);
+        setPagination({ ...pagination, total: data.length });
+      } else {
+        setCustomers([]);
+        setPagination({ ...pagination, total: 0 });
+      }
+    } catch (error) {
+      message.error(
+        `Failed to fetch customers: ${error.message || "Unknown error"}`
+      );
+      setCustomers([]);
+      setPagination({ ...pagination, total: 0 });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAction = async (action, userId) => {
+  const handleView = async (record) => {
     try {
-      switch (action) {
-        case 'activate':
-          await usersAPI.activateUser(userId);
-          setCustomers(customers.map(c => 
-            c.id === userId ? { ...c, status: 'active' } : c
-          ));
-          message.success('Customer activated successfully');
-          break;
-        case 'deactivate':
-          await usersAPI.deactivateUser(userId);
-          setCustomers(customers.map(c => 
-            c.id === userId ? { ...c, status: 'inactive' } : c
-          ));
-          message.success('Customer deactivated successfully');
-          break;
-        case 'suspend':
-          await usersAPI.suspendUser(userId);
-          setCustomers(customers.map(c => 
-            c.id === userId ? { ...c, status: 'suspended' } : c
-          ));
-          message.success('Customer suspended successfully');
-          break;
-        case 'reset-password':
-          await usersAPI.resetPassword(userId);
-          message.success('Password reset email sent');
-          break;
-        case 'delete':
-          Modal.confirm({
-            title: 'Are you sure you want to delete this customer?',
-            content: 'This action cannot be undone.',
-            okText: 'Yes, Delete',
-            okType: 'danger',
-            onOk: async () => {
-              await usersAPI.deleteUser(userId);
-              setCustomers(customers.filter(c => c.id !== userId));
-              message.success('Customer deleted successfully');
-            },
-          });
-          return;
-      }
+      const data = await customersAPI.getById(record.id || record._id);
+      setSelectedRecord(data);
+      viewForm.setFieldsValue({
+        firstName: data?.firstName || "",
+        lastName: data?.lastName || "",
+        email: data?.email || "",
+        mobNo: data?.mobNo || "",
+        dob: data?.dob ? dayjs(data.dob) : null,
+        isActive: data?.isActive,
+        status: data?.status || "",
+        roles: Array.isArray(data?.roles)
+          ? data.roles.join(", ")
+          : data?.role || "",
+      });
+      setViewModalVisible(true);
     } catch {
-      message.error('Action failed');
+      message.error("Failed to fetch customer details");
     }
   };
 
-  const getActionMenu = (record) => ({
-    items: [
-      {
-        key: 'view',
-        icon: <EditOutlined />,
-        label: 'View Details',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'activate',
-        icon: <CheckCircleOutlined />,
-        label: 'Activate',
-        onClick: () => handleAction('activate', record.id),
-        disabled: record.status === 'active',
-      },
-      {
-        key: 'deactivate',
-        icon: <StopOutlined />,
-        label: 'Deactivate',
-        onClick: () => handleAction('deactivate', record.id),
-        disabled: record.status === 'inactive',
-      },
-      {
-        key: 'suspend',
-        icon: <LockOutlined />,
-        label: 'Suspend',
-        onClick: () => handleAction('suspend', record.id),
-        disabled: record.status === 'suspended',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'reset-password',
-        label: 'Reset Password',
-        onClick: () => handleAction('reset-password', record.id),
-      },
-      {
-        key: 'delete',
-        icon: <DeleteOutlined />,
-        label: 'Delete',
-        danger: true,
-        onClick: () => handleAction('delete', record.id),
-      },
-    ],
-  });
+  const handleEdit = async (record) => {
+    try {
+      const data = await customersAPI.getById(record.id || record._id);
+      setSelectedRecord(data);
+      form.setFieldsValue({
+        firstName: data?.firstName || "",
+        lastName: data?.lastName || "",
+        email: data?.email || "",
+        mobNo: data?.mobNo || "",
+        dob: data?.dob ? dayjs(data.dob) : null,
+        isActive: data?.isActive ?? false,
+      });
+      setEditModalVisible(true);
+    } catch {
+      message.error("Failed to fetch customer details");
+    }
+  };
+
+  const handleUpdate = async (values) => {
+    if (!selectedRecord) return;
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("firstName", values.firstName);
+      formData.append("lastName", values.lastName);
+      formData.append("mobNo", values.mobNo);
+      formData.append("email", values.email);
+      if (values.gender) formData.append("gender", values.gender);
+      if (values.dob) {
+        formData.append("dob", values.dob.format("YYYY-MM-DD"));
+      }
+      formData.append("isActive", values.isActive ? "true" : "false");
+
+      await customersAPI.update(
+        selectedRecord.id || selectedRecord._id,
+        formData
+      );
+      message.success("Customer updated successfully");
+      setEditModalVisible(false);
+      form.resetFields();
+      setSelectedRecord(null);
+      fetchCustomers();
+    } catch (err) {
+      message.error(
+        err?.response?.data?.message || "Failed to update customer"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (record) => {
+    const customerId = record._id || record.id || record.userId;
+    if (!customerId) {
+      message.error("Customer id missing; cannot delete");
+      return;
+    }
+    try {
+      await customersAPI.deleteCustomer(customerId);
+      setCustomers((prev) =>
+        prev.filter((c) => (c.id || c._id || c.userId) !== customerId)
+      );
+      message.success("Customer deleted successfully");
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to delete customer"
+      );
+    }
+  };
 
   const columns = [
     {
-      title: 'Customer',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text, record) => (
-        <Space>
-          <Avatar src={record.avatar} icon={<UserOutlined />} />
-          <div>
-            <div className="font-medium">{text}</div>
-            <div className="text-xs text-gray-500">{record.email}</div>
-          </div>
-        </Space>
-      ),
+      title: "Customer Name",
+      dataIndex: "name",
+      key: "name",
+      render: (text, record) => {
+        if (!record) return "-";
+        const name =
+          text ||
+          `${record.firstName || ""} ${record.lastName || ""}`.trim() ||
+          "N/A";
+        const email = record.email || "N/A";
+        const avatar =
+          record.avatar || record.profilePicture?.uri || record.profilePicture;
+        return (
+          <Space>
+            <Avatar src={avatar} icon={<UserOutlined />} />
+            <div>
+              <div className="font-medium">{name}</div>
+              <div className="text-xs text-gray-500">{email}</div>
+            </div>
+          </Space>
+        );
+      },
     },
     {
-      title: 'Phone',
-      dataIndex: 'phone',
-      key: 'phone',
+      title: "Phone",
+      dataIndex: "phone",
+      key: "phone",
+      render: (phone, record) => phone || record.mobNo || "N/A",
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => <StatusTag status={status} />,
+      title: "Status",
+      dataIndex: "isActive",
+      key: "isActive",
+      render: (isActive) => {
+        const status = isActive === true ? "Active" : "InActive";
+        return <StatusTag status={status} />;
+      },
       filters: [
-        { text: 'Active', value: 'active' },
-        { text: 'Inactive', value: 'inactive' },
-        { text: 'Suspended', value: 'suspended' },
+        { text: "Active", value: true },
+        { text: "InActive", value: false },
       ],
-      onFilter: (value, record) => record.status === value,
+      onFilter: (value, record) => {
+        return record.isActive === value;
+      },
     },
     {
-      title: 'Total Orders',
-      dataIndex: 'totalOrders',
-      key: 'totalOrders',
-      sorter: (a, b) => a.totalOrders - b.totalOrders,
+      title: "Total Orders",
+      dataIndex: "totalOrders",
+      key: "totalOrders",
+      render: (count) => count || 0,
+      sorter: (a, b) => (a.totalOrders || 0) - (b.totalOrders || 0),
     },
     {
-      title: 'Total Spent',
-      dataIndex: 'totalSpent',
-      key: 'totalSpent',
-      render: (amount) => `₹${amount}`,
-      sorter: (a, b) => a.totalSpent - b.totalSpent,
+      title: "Total Spent",
+      dataIndex: "totalSpent",
+      key: "totalSpent",
+      render: (amount) => `₹${(amount || 0).toLocaleString()}`,
+      sorter: (a, b) => (a.totalSpent || 0) - (b.totalSpent || 0),
     },
     {
-      title: 'Joined Date',
-      dataIndex: 'joinedDate',
-      key: 'joinedDate',
-      sorter: (a, b) => new Date(a.joinedDate) - new Date(b.joinedDate),
+      title: "Joined Date",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (date) => (date ? new Date(date).toLocaleDateString() : "N/A"),
+      sorter: (a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+        return dateA - dateB;
+      },
     },
     {
-      title: 'Actions',
-      key: 'actions',
+      title: "Actions",
+      key: "actions",
+      width: 150,
       render: (_, record) => (
-        <Dropdown menu={getActionMenu(record)} trigger={['click']}>
-          <Button icon={<MoreOutlined />} />
-        </Dropdown>
+        <Space size="small">
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => handleView(record)}
+            title="View"
+            style={{ color: "#9dda52" }}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+            title="Edit"
+            style={{ color: "#ffbc2c" }}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record)}
+            title="Delete"
+            danger
+          />
+        </Space>
       ),
     },
   ];
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const handleAddCustomer = async (values) => {
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("firstName", values.firstName);
+      formData.append("lastName", values.lastName);
+      formData.append("mobNo", values.mobNo);
+      formData.append("email", values.email);
+      formData.append("roleType", "CUSTOMER");
+
+      await customersAPI.create(formData);
+      message.success("Customer created successfully");
+      setAddModalVisible(false);
+      form.resetFields();
+      fetchCustomers();
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to create customer"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filteredCustomers = customers.filter((customer) => {
+    if (!customer) return false;
+    const name = (
+      customer.name ||
+      `${customer.firstName || ""} ${customer.lastName || ""}`.trim() ||
+      ""
+    ).toLowerCase();
+    const email = (customer.email || "").toLowerCase();
+    const search = searchText.toLowerCase();
+    return name.includes(search) || email.includes(search);
+  });
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Customers</h1>
-        <Button type="primary" icon={<PlusOutlined />}>
-          Add Customer
-        </Button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
+        }}
+      >
+        <div
+          className="flex justify-between items-start mb-6"
+          style={{
+            flexWrap: "wrap",
+            gap: 12,
+            rowGap: 12,
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "24px",
+              fontWeight: "bold",
+              color: "#3c2f3d",
+              margin: 0,
+            }}
+          >
+            Customers
+          </h1>
+          <div
+            className="flex items-center gap-3"
+            style={{
+              flexWrap: "wrap",
+              gap: 12,
+              justifyContent: "flex-end",
+              flex: 1,
+              minWidth: 260,
+            }}
+          >
+            <Input
+              placeholder="Search customers..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: "100%", minWidth: 220, flex: 1, maxWidth: 360 }}
+              size="large"
+            />
+            {canAddCustomer() && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setAddModalVisible(true)}
+                style={{
+                  background: "#9dda52",
+                  color: "#3c2f3d",
+                  width: "100%",
+                  maxWidth: 180,
+                }}
+              >
+                Add Customer
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="mb-4">
-        <Input
-          placeholder="Search customers..."
-          prefix={<SearchOutlined />}
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          style={{ width: 300 }}
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
+        }}
+      >
+        <Table
+          columns={columns}
+          dataSource={filteredCustomers || []}
+          rowKey={(record) => record?.id || record?._id || Math.random()}
+          loading={loading}
+          pagination={{
+            ...pagination,
+            total: filteredCustomers?.length || 0,
+            showTotal: (total) => `Total ${total} customers`,
+          }}
+          onChange={(newPagination) => setPagination(newPagination)}
+          locale={{ emptyText: "No customers found" }}
+          scroll={{ x: 900 }}
         />
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={filteredCustomers}
-        rowKey="id"
-        loading={loading}
-        pagination={pagination}
-        onChange={(newPagination) => setPagination(newPagination)}
-      />
+      {/* View Drawer */}
+      <Drawer
+        title="Customer Details"
+        open={viewModalVisible}
+        onClose={() => {
+          setViewModalVisible(false);
+          viewForm.resetFields();
+          setSelectedRecord(null);
+        }}
+        width={560}
+        destroyOnClose
+        placement="right"
+      >
+        <Form form={viewForm} layout="vertical" style={{ marginTop: 12 }}>
+          <Form.Item style={{ textAlign: "center" }}>
+            <Avatar
+              size={64}
+              src={selectedRecord?.profilePicture?.uri}
+              icon={<UserOutlined />}
+            />
+          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="firstName" label="First Name">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="email" label="Email">
+            <Input readOnly size="middle" />
+          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="mobNo" label="Mobile Number">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="dob" label="Date of Birth">
+                <Input readOnly size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginTop: 8,
+            }}
+          >
+            <Button
+              onClick={() => {
+                setViewModalVisible(false);
+                viewForm.resetFields();
+                setSelectedRecord(null);
+              }}
+              style={{
+                backgroundColor: "#3c2f3d",
+                color: "#ffffff",
+                borderColor: "#3c2f3d",
+              }}
+            >
+              Close
+            </Button>
+          </div>
+        </Form>
+      </Drawer>
+
+      {/* Edit Drawer */}
+      <Drawer
+        title="Edit Customer"
+        open={editModalVisible}
+        onClose={() => {
+          setEditModalVisible(false);
+          form.resetFields();
+          setSelectedRecord(null);
+        }}
+        width={640}
+        destroyOnClose
+        placement="right"
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleUpdate}
+          style={{ marginTop: 12 }}
+        >
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="firstName" label="First Name">
+                <Input placeholder="Enter first name" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input placeholder="Enter last name" size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[{ type: "email", message: "Please enter a valid email" }]}
+          >
+            <Input placeholder="Enter email" size="middle" />
+          </Form.Item>
+
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="mobNo"
+                label="Mobile Number"
+                rules={[
+                  {
+                    pattern: /^[0-9]{10}$/,
+                    message: "Please enter a valid 10-digit mobile number",
+                  },
+                ]}
+              >
+                <Input placeholder="Enter mobile number" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dob" label="Date of Birth">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  size="middle"
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="isActive"
+            label="Active Status"
+            valuePropName="checked"
+            initialValue={false}
+          >
+            <Switch checkedChildren="Active" unCheckedChildren="InActive" />
+          </Form.Item>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            <Button
+              onClick={() => {
+                setEditModalVisible(false);
+                form.resetFields();
+                setSelectedRecord(null);
+              }}
+              style={{
+                backgroundColor: "#3c2f3d",
+                color: "#ffffff",
+                borderColor: "#3c2f3d",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={submitting}
+              style={{ background: "#9dda52", color: "#3c2f3d" }}
+            >
+              Update Customer
+            </Button>
+          </div>
+        </Form>
+      </Drawer>
+
+      {/* Add Drawer */}
+      <Drawer
+        title="Add New Customer"
+        open={addModalVisible}
+        onClose={() => {
+          setAddModalVisible(false);
+          form.resetFields();
+        }}
+        width={640}
+        destroyOnClose
+        placement="right"
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleAddCustomer}
+          style={{ marginTop: 12 }}
+        >
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="firstName"
+                label="First Name"
+                rules={[{ required: true, message: "Please enter first name" }]}
+              >
+                <Input placeholder="Enter first name" size="middle" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name">
+                <Input placeholder="Enter last name" size="middle" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[{ type: "email", message: "Please enter a valid email" }]}
+          >
+            <Input placeholder="Enter email" size="middle" />
+          </Form.Item>
+
+          <Form.Item
+            name="mobNo"
+            label="Mobile Number"
+            rules={[
+              { required: true, message: "Please enter mobile number" },
+              {
+                pattern: /^[0-9]{10}$/,
+                message: "Please enter a valid 10-digit mobile number",
+              },
+            ]}
+          >
+            <Input placeholder="Enter mobile number" size="middle" />
+          </Form.Item>
+
+          <Form.Item
+            name="roleType"
+            label="Role Type"
+            initialValue="CUSTOMER"
+            rules={[{ required: true }]}
+          >
+            <Select size="middle" disabled>
+              <Select.Option value="CUSTOMER">Customer</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            <Button
+              onClick={() => {
+                setAddModalVisible(false);
+                form.resetFields();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={submitting}
+              style={{ background: "#9dda52", color: "#3c2f3d" }}
+            >
+              Create Customer
+            </Button>
+          </div>
+        </Form>
+      </Drawer>
     </div>
   );
 };
 
 export default CustomerList;
-
