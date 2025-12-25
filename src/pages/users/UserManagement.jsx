@@ -63,12 +63,10 @@ const UserManagement = () => {
       }}
     >
       <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ marginBottom: 8, color: "#3c2f3d" }}>
-          User Management
-        </Title>
-        <Text type="secondary" style={{ fontSize: 16, display: "block" }}>
+        <h1 style={{ fontSize: 28, color: "#3c2f3d" }}>User Management</h1>
+        <p style={{ fontSize: 16, display: "block", color: "#6b7280" }}>
           Select a section to manage different types of users
-        </Text>
+        </p>
       </div>
 
       <Row gutter={[20, 20]}>

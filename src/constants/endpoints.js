@@ -13,7 +13,10 @@ export const ENDPOINTS = {
   SUPER_ADMIN_FORGET_PASSWORD: "/admin/forget-password",
   SUPER_ADMIN_RESET_PASSWORD: "/admin/reset-password",
   ADMIN_PERMISSIONS: "/admin/permissions",
-
+  DASHBOARD_STATS: "admin/dashboard/overview",
+  DASHBOARD_SERIES: "admin/dashboard/series",
+  DASHBOARD_ACTIVE_VENDORS_DELIVERY_PARTNERS: "admin/dashboard/actives",
+  DASHBOARD_RECENT_ORDERS: "admin/dashboard/recent-orders",
   // Staff (Admins & Sub-admins)
   STAFF_ADD_ADMIN: "/staff/add-admin",
   STAFF_UPDATE_ADMIN: (id) => `/staff/update-admin/${id}`,
@@ -32,8 +35,6 @@ export const ENDPOINTS = {
   STAFF_ADMIN_CHANGE_PASSWORD: (id) => `/staff/admin-change-password/${id}`,
   STAFF_SUB_ADMIN_CHANGE_PASSWORD: (id) =>
     `/staff/sub-admin-change-password/${id}`,
-  DASHBOARD_STATS: "/dashboard/stats",
-  DASHBOARD_ANALYTICS: "/dashboard/analytics",
   USERS_VERIFY_STATUS: (userId) => `/users/verify-status/${userId}`,
 
   // User Management - Customers
@@ -120,9 +121,4 @@ export const ENDPOINTS = {
   VENDOR_ANALYTICS_BASIC: "/vendor-analytics/analytics/basic",
   VENDOR_ANALYTICS_LIMITED: "/vendor-analytics/analytics/limited",
   VENDOR_ANALYTICS_FULL: "/vendor-analytics/analytics/full",
-
-  // Map/Places
-  MAP_PLS_AUTOSUGGEST: "/map-pls/places/autosuggest",
-  MAP_PLS_GEOCODE: "/map-pls/places/geocode",
-  MAP_PLS_REVERSE_GEOCODE: "/map-pls/places/reverse-geocode",
 };

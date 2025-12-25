@@ -217,7 +217,6 @@ const AdminProfile = () => {
             style={{
               background: "#9dda52",
               color: "#3c2f3d",
-              fontWeight: "bold",
             }}
             htmlType="submit"
             loading={saving}
@@ -264,7 +263,6 @@ const AdminProfile = () => {
             style={{
               background: "#9dda52",
               color: "#3c2f3d",
-              fontWeight: "bold",
             }}
             htmlType="submit"
             loading={pwdSaving}

@@ -58,13 +58,18 @@ const SettingsManagement = () => {
       }}
     >
       <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ marginBottom: 8, color: "#3c2f3d" }}>
-          Settings
-        </Title>
+        <h1 style={{ fontSize: 28, color: "#3c2f3d" }}>Settings</h1>
 
-        <Text type="secondary" style={{ fontSize: 16, display: "block" }}>
+        <p
+          style={{
+            fontSize: 16,
+            display: "block",
+            color: "#6b7280",
+            marginBottom: 24,
+          }}
+        >
           Quickly navigate to manage staff and roles
-        </Text>
+        </p>
 
         <Row gutter={[20, 20]}>
           {accessibleSections.map((section) => (

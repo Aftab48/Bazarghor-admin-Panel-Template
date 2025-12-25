@@ -565,7 +565,7 @@ const OrderManagement = () => {
       value: formatNumber(pendingCount),
       icon: <ClockCircleOutlined />,
       iconBg: "#fff7ed",
-      iconColor: "#f97316",
+      iconColor: "#ffbc2c",
     },
     {
       key: "ongoing",

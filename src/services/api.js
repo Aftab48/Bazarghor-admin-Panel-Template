@@ -7,6 +7,7 @@ import {
   generateSalesByVendor,
   generateSalesByCategory,
 } from "../mock/mockData";
+import { get } from "lodash";
 
 // Create axios instance
 const apiClient = axios.create({
@@ -199,12 +200,28 @@ const apiCall = async (apiFunction, fallbackData) => {
 // Dashboard API
 export const dashboardAPI = {
   getStats: () =>
-    apiCall(() => apiClient.get("/dashboard/stats"), mockData.dashboardStats),
-
-  getAnalytics: (period = "daily") =>
     apiCall(
-      () => apiClient.get(`/dashboard/analytics?period=${period}`),
-      generateAnalytics(period)
+      () => apiClient.get(ENDPOINTS.DASHBOARD_STATS),
+      mockData.dashboardStats
+    ),
+  getSeries: (period) =>
+    apiCall(
+      () =>
+        apiClient.get(ENDPOINTS.DASHBOARD_SERIES, {
+          params: { period },
+        }),
+      mockData.dashboardSeries
+    ),
+
+  getActiveVendorsAndDeliveryPartners: () =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.DASHBOARD_ACTIVE_VENDORS_DELIVERY_PARTNERS),
+      mockData.dashboardActiveVendorsAndDeliveryPartners
+    ),
+  getRecentOrders: () =>
+    apiCall(
+      () => apiClient.get(ENDPOINTS.DASHBOARD_RECENT_ORDERS),
+      mockData.dashboardRecentOrders
     ),
 };
 

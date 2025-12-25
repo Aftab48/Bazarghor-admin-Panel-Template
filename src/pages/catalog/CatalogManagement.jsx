@@ -53,13 +53,18 @@ const CatalogManagement = () => {
       }}
     >
       <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ marginBottom: 8, color: "#3c2f3d" }}>
-          Catalog
-        </Title>
+        <h1 style={{ fontSize: 28, color: "#3c2f3d" }}>Catalog</h1>
 
-        <Text type="secondary" style={{ fontSize: 16, display: "block" }}>
+        <p
+          style={{
+            fontSize: 16,
+            display: "block",
+            color: "#6b7280",
+            marginBottom: "24px",
+          }}
+        >
           Manage categories and products from one place
-        </Text>
+        </p>
         <Row gutter={[20, 20]}>
           {accessibleSections.map((section) => (
             <Col xs={24} sm={12} md={8} key={section.key}>
