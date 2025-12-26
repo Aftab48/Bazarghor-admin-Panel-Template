@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import apiClient from "../services/api";
 import { ENDPOINTS } from "../constants/endpoints";
-import { ROLES } from "../constants/permissions";
+import { ROLES, ROLE_DEFAULT_PERMISSIONS } from "../constants/permissions";
 import { AuthContext } from "./authContextConstants";
 
 // Helper function to normalize roles to string array
@@ -10,10 +10,23 @@ const normalizeRoles = (roles) => {
   if (!roles) return [];
   const roleArray = Array.isArray(roles) ? roles : [roles].filter(Boolean);
   return roleArray.map((role) => {
-    if (typeof role === "string") return role;
-    if (role && typeof role === "object" && role.code) return role.code;
-    if (role && typeof role === "object" && role.roleCode) return role.roleCode;
-    return String(role);
+    // If role is a string, normalize to uppercase and replace spaces with underscore
+    if (typeof role === "string")
+      return role.toUpperCase().replace(/\s+/g, "_");
+
+    // If it's an object, try common identifier fields
+    if (role && typeof role === "object") {
+      if (role.code) return String(role.code).toUpperCase();
+      if (role.roleCode) return String(role.roleCode).toUpperCase();
+      if (role.name)
+        return String(role.name).toUpperCase().replace(/\s+/g, "_");
+      if (role.role)
+        return String(role.role).toUpperCase().replace(/\s+/g, "_");
+      if (role.roleName)
+        return String(role.roleName).toUpperCase().replace(/\s+/g, "_");
+    }
+
+    return String(role).toUpperCase().replace(/\s+/g, "_");
   });
 };
 
@@ -40,17 +53,57 @@ export const AuthProvider = ({ children }) => {
           if (storedRefreshToken) setRefreshToken(storedRefreshToken);
           if (storedRoles) {
             try {
-              const parsedRoles = JSON.parse(storedRoles);
-              setRoles(normalizeRoles(parsedRoles));
+              const parsedRolesRaw = JSON.parse(storedRoles);
+              const parsedRoles = normalizeRoles(parsedRolesRaw);
+              setRoles(parsedRoles);
             } catch (e) {
               console.error("Failed to parse stored roles:", e);
             }
           }
+          let parsedStoredPermissions = null;
           if (storedPermissions) {
             try {
-              setPermissions(JSON.parse(storedPermissions));
+              parsedStoredPermissions = JSON.parse(storedPermissions);
+              if (
+                Array.isArray(parsedStoredPermissions) &&
+                parsedStoredPermissions.length > 0
+              ) {
+                setPermissions(parsedStoredPermissions);
+              }
             } catch (e) {
               console.error("Failed to parse stored permissions:", e);
+            }
+          }
+
+          // If no stored permissions, derive from role defaults
+          if (
+            (!parsedStoredPermissions ||
+              parsedStoredPermissions.length === 0) &&
+            storedRoles
+          ) {
+            try {
+              const parsedRolesRaw = JSON.parse(storedRoles);
+              const parsedRoles = normalizeRoles(parsedRolesRaw);
+              const merged = new Set();
+              parsedRoles.forEach((r) => {
+                const key = typeof r === "string" ? r : String(r);
+                const upper = key.toUpperCase();
+                const defaults =
+                  ROLE_DEFAULT_PERMISSIONS[key] ||
+                  ROLE_DEFAULT_PERMISSIONS[upper] ||
+                  [];
+                (defaults || []).forEach((p) => merged.add(p));
+              });
+              const finalPerms = Array.from(merged);
+              if (finalPerms.length > 0) {
+                setPermissions(finalPerms);
+                localStorage.setItem(
+                  "userPermissions",
+                  JSON.stringify(finalPerms)
+                );
+              }
+            } catch (e) {
+              // ignore parse errors here
             }
           }
           if (storedUserId) {
@@ -110,7 +163,27 @@ export const AuthProvider = ({ children }) => {
     setToken(newToken);
     if (newRefreshToken) setRefreshToken(newRefreshToken);
     setRoles(normalizedRoles);
-    setPermissions(Array.isArray(newPermissions) ? newPermissions : []);
+    // If backend didn't supply permissions, fall back to role defaults
+    let finalPermissions = Array.isArray(newPermissions)
+      ? [...newPermissions]
+      : [];
+    if (
+      (!finalPermissions || finalPermissions.length === 0) &&
+      Array.isArray(normalizedRoles)
+    ) {
+      const merged = new Set(finalPermissions);
+      normalizedRoles.forEach((r) => {
+        const key = typeof r === "string" ? r : String(r);
+        const upper = key.toUpperCase();
+        const defaults =
+          ROLE_DEFAULT_PERMISSIONS[key] ||
+          ROLE_DEFAULT_PERMISSIONS[upper] ||
+          [];
+        (defaults || []).forEach((p) => merged.add(p));
+      });
+      finalPermissions = Array.from(merged);
+    }
+    setPermissions(finalPermissions);
     setUser(userData || null);
 
     // Store in localStorage
@@ -121,7 +194,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("userRoles", JSON.stringify(normalizedRoles));
     localStorage.setItem(
       "userPermissions",
-      JSON.stringify(newPermissions || [])
+      JSON.stringify(finalPermissions || [])
     );
     if (userData?.id) {
       localStorage.setItem("userId", userData.id);

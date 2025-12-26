@@ -9,15 +9,18 @@ import {
   Checkbox,
   message,
   Tag,
+  Typography,
 } from "antd";
 import {
-  PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   TeamOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import { settingsAPI } from "../../services/api";
+import { settingsAPI, rolesAPI } from "../../services/api";
+import { PERMISSIONS } from "../../constants/permissions";
+
+const { Title, Text } = Typography;
 
 const RolesPermissions = () => {
   const [loading, setLoading] = useState(false);
@@ -30,20 +33,63 @@ const RolesPermissions = () => {
     pageSize: 10,
     total: 0,
   });
+  const [selectedPermissions, setSelectedPermissions] = useState({});
   const [form] = Form.useForm();
 
   const allPermissions = [
-    { key: "users", label: "User Management" },
-    { key: "vendors", label: "Vendor Management" },
-    { key: "agents", label: "Delivery Agent Management" },
-    { key: "products", label: "Product Management" },
-    { key: "orders", label: "Order Management" },
-    { key: "transactions", label: "Payments & Transactions" },
-    { key: "promotions", label: "Promotions & Banners" },
-    { key: "analytics", label: "Analytics & Reports" },
-    { key: "settings", label: "System Settings" },
-    { key: "tickets", label: "Support Tickets" },
-    { key: "audit", label: "Audit Logs" },
+    { key: PERMISSIONS.VIEW_ADMINS, label: "View Admins" },
+    { key: PERMISSIONS.CREATE_ADMIN, label: "Create Admin" },
+    { key: PERMISSIONS.UPDATE_ADMIN, label: "Update Admin" },
+    { key: PERMISSIONS.DELETE_ADMIN, label: "Delete Admin" },
+    {
+      key: PERMISSIONS.MANAGE_ROLE_PERMISSIONS,
+      label: "Manage Role Permissions",
+    },
+
+    { key: PERMISSIONS.CREATE_SUB_ADMIN, label: "Create Sub-admin" },
+    { key: PERMISSIONS.UPDATE_SUB_ADMIN, label: "Update Sub-admin" },
+    { key: PERMISSIONS.DELETE_SUB_ADMIN, label: "Delete Sub-admin" },
+    { key: PERMISSIONS.VIEW_SUB_ADMINS, label: "View Sub-admins" },
+
+    { key: PERMISSIONS.VIEW_VENDORS, label: "View Vendors" },
+    { key: PERMISSIONS.CREATE_VENDOR, label: "Create Vendor" },
+    { key: PERMISSIONS.UPDATE_VENDOR, label: "Update Vendor" },
+    { key: PERMISSIONS.DELETE_VENDOR, label: "Delete Vendor" },
+
+    {
+      key: PERMISSIONS.VIEW_DELIVERY_PARTNERS,
+      label: "View Delivery Partners",
+    },
+    {
+      key: PERMISSIONS.CREATE_DELIVERY_PARTNER,
+      label: "Create Delivery Partner",
+    },
+    {
+      key: PERMISSIONS.UPDATE_DELIVERY_PARTNER,
+      label: "Update Delivery Partner",
+    },
+    {
+      key: PERMISSIONS.DELETE_DELIVERY_PARTNER,
+      label: "Delete Delivery Partner",
+    },
+
+    { key: PERMISSIONS.VIEW_CUSTOMERS, label: "View Customers" },
+    { key: PERMISSIONS.CREATE_CUSTOMER, label: "Create Customer" },
+    { key: PERMISSIONS.UPDATE_CUSTOMER, label: "Update Customer" },
+    { key: PERMISSIONS.DELETE_CUSTOMER, label: "Delete Customer" },
+
+    { key: PERMISSIONS.VIEW_PRODUCTS, label: "View Products" },
+    { key: PERMISSIONS.CREATE_PRODUCT, label: "Create Product" },
+    { key: PERMISSIONS.UPDATE_PRODUCT, label: "Update Product" },
+    { key: PERMISSIONS.DELETE_PRODUCT, label: "Delete Product" },
+
+    { key: PERMISSIONS.VIEW_ORDERS, label: "View Orders" },
+    { key: PERMISSIONS.MANAGE_ORDERS, label: "Manage Orders" },
+
+    { key: PERMISSIONS.VIEW_STORES, label: "View Stores" },
+    { key: PERMISSIONS.MANAGE_SUBSCRIPTIONS, label: "Manage Subscriptions" },
+
+    { key: PERMISSIONS.VERIFY_USER_STATUS, label: "Verify User Status" },
   ];
 
   useEffect(() => {
@@ -55,6 +101,13 @@ const RolesPermissions = () => {
     try {
       const data = await settingsAPI.getRoles();
       setRoles(data || []);
+      // initialize selected permissions per role for the checkbox UI
+      const initial = {};
+      (data || []).forEach((r) => {
+        const key = r.id || r._id || r.name;
+        initial[key] = Array.isArray(r.permissions) ? [...r.permissions] : [];
+      });
+      setSelectedPermissions(initial);
       setPagination((prev) => ({
         ...prev,
         total: Array.isArray(data) ? data.length : 0,
@@ -92,6 +145,67 @@ const RolesPermissions = () => {
     return "#d9d9d9";
   };
 
+  const handleAddPermissions = async (role, perms) => {
+    if (!perms || perms.length === 0) return;
+    const roleKey = role.id || role._id || role.name;
+    const code = role.code || role.name || roleKey;
+
+    const prevRoles = [...roles];
+    const newRoles = roles.map((r) => {
+      const key = r.id || r._id || r.name;
+      if (key !== roleKey) return r;
+      const current = Array.isArray(r.permissions) ? [...r.permissions] : [];
+      const updated = [...current];
+      perms.forEach((p) => {
+        if (!updated.includes(p)) updated.push(p);
+      });
+      return { ...r, permissions: updated };
+    });
+
+    setRoles(newRoles);
+    try {
+      await rolesAPI.updatePermissions(code, {
+        permissions: newRoles.find((r) => (r.id || r._id || r.name) === roleKey)
+          .permissions,
+      });
+      message.success(
+        `Added ${perms.length} permission(s) to ${role.name || roleKey}`
+      );
+    } catch (err) {
+      setRoles(prevRoles);
+      message.error("Failed to update permissions. Please try again.");
+    }
+  };
+
+  const handleRemovePermissions = async (role, perms) => {
+    if (!perms || perms.length === 0) return;
+    const roleKey = role.id || role._id || role.name;
+    const code = role.code || role.name || roleKey;
+
+    const prevRoles = [...roles];
+    const newRoles = roles.map((r) => {
+      const key = r.id || r._id || r.name;
+      if (key !== roleKey) return r;
+      const current = Array.isArray(r.permissions) ? [...r.permissions] : [];
+      const updated = current.filter((p) => !perms.includes(p));
+      return { ...r, permissions: updated };
+    });
+
+    setRoles(newRoles);
+    try {
+      await rolesAPI.updatePermissions(code, {
+        permissions: newRoles.find((r) => (r.id || r._id || r.name) === roleKey)
+          .permissions,
+      });
+      message.success(
+        `Removed ${perms.length} permission(s) from ${role.name || roleKey}`
+      );
+    } catch (err) {
+      setRoles(prevRoles);
+      message.error("Failed to update permissions. Please try again.");
+    }
+  };
+
   const filteredRoles = useMemo(() => {
     const term = searchText.trim().toLowerCase();
     if (!term) return roles;
@@ -104,9 +218,9 @@ const RolesPermissions = () => {
       dataIndex: "name",
       key: "name",
       render: (text) => (
-        <Space>
-          <TeamOutlined />
-          <span className="font-medium">{text}</span>
+        <Space align="center">
+          <TeamOutlined style={{ color: getRoleColor(text) }} />
+          <span style={{ fontWeight: 600 }}>{text}</span>
         </Space>
       ),
     },
@@ -114,17 +228,60 @@ const RolesPermissions = () => {
       title: "Permissions",
       dataIndex: "permissions",
       key: "permissions",
-      render: (permissions) => {
-        if (!permissions || !Array.isArray(permissions)) {
-          return <Tag>No permissions</Tag>;
-        }
+      render: (permissions, record) => {
+        const roleKey = record.id || record._id || record.name;
+        const current = Array.isArray(record.permissions)
+          ? record.permissions
+          : [];
+
+        // controlled selected values for this role
+        const selected = selectedPermissions[roleKey] || current;
+
+        // compute which checked items are additions or removals
+        const toAdd = (selected || []).filter((p) => !current.includes(p));
+        const toRemove = (selected || []).filter((p) => current.includes(p));
+
         return (
-          <div className="flex flex-wrap gap-1">
-            {permissions.includes("all") ? (
-              <Tag color="blue">All Permissions</Tag>
-            ) : (
-              permissions.map((perm) => <Tag key={perm}>{perm}</Tag>)
-            )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <Checkbox.Group
+              value={selected}
+              onChange={(vals) =>
+                setSelectedPermissions((prev) => ({ ...prev, [roleKey]: vals }))
+              }
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 6,
+                }}
+              >
+                {allPermissions.map((perm) => (
+                  <Checkbox key={perm.key} value={perm.key}>
+                    {perm.label}
+                  </Checkbox>
+                ))}
+              </div>
+            </Checkbox.Group>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <Button
+                size="small"
+                type="primary"
+                disabled={toAdd.length === 0}
+                onClick={() => handleAddPermissions(record, toAdd)}
+              >
+                Add
+              </Button>
+              <Button
+                size="small"
+                danger
+                disabled={toRemove.length === 0}
+                onClick={() => handleRemovePermissions(record, toRemove)}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         );
       },
@@ -141,7 +298,7 @@ const RolesPermissions = () => {
           >
             Edit
           </Button>
-          {record.name !== "Super Admin" && (
+          {String(record.name).toLowerCase() !== "super admin" && (
             <Button size="small" danger icon={<DeleteOutlined />}>
               Delete
             </Button>
@@ -157,8 +314,8 @@ const RolesPermissions = () => {
         style={{
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
-          borderRadius: "8px",
-          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
+          borderRadius: 8,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <div
@@ -167,27 +324,23 @@ const RolesPermissions = () => {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 12,
-            rowGap: 12,
             flexWrap: "wrap",
           }}
         >
-          <h1
-            style={{
-              fontSize: "24px",
-              fontWeight: "bold",
-              color: "#3c2f3d",
-              margin: 0,
-            }}
-          >
-            Roles & Permissions
-          </h1>
+          <div>
+            <h1 level={3} style={{ margin: 0, fontSize: 28, color: "#3c2f3d" }}>
+              Roles & Permissions
+            </h1>
+            <p type="secondary" style={{ display: "block", marginTop: 6 }}>
+              Create and manage roles and their permissions
+            </p>
+          </div>
+
           <div
             style={{
               display: "flex",
               gap: 12,
-              flexWrap: "wrap",
-              justifyContent: "flex-end",
-              flex: 1,
+              alignItems: "center",
               minWidth: 220,
             }}
           >
@@ -196,18 +349,11 @@ const RolesPermissions = () => {
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: "100%", maxWidth: 340, flex: 1, minWidth: 200 }}
+              style={{ width: 320 }}
               size="large"
               allowClear
             />
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAdd}
-              style={{ background: "#9dda52", color: "#3c2f3d" }}
-            >
-              Add Role
-            </Button>
+            {/* Add Role disabled for now */}
           </div>
         </div>
       </div>
@@ -216,8 +362,8 @@ const RolesPermissions = () => {
         style={{
           background: "#ffffff",
           padding: "clamp(16px, 2vw, 24px)",
-          borderRadius: "8px",
-          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
+          borderRadius: 8,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
         <Table
@@ -252,6 +398,7 @@ const RolesPermissions = () => {
           >
             <Input placeholder="e.g., Support Manager" />
           </Form.Item>
+
           <Form.Item
             name="permissions"
             label="Permissions"
@@ -263,7 +410,13 @@ const RolesPermissions = () => {
             ]}
           >
             <Checkbox.Group>
-              <div className="grid grid-cols-2 gap-2">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 10,
+                }}
+              >
                 {allPermissions.map((perm) => (
                   <Checkbox key={perm.key} value={perm.key}>
                     {perm.label}

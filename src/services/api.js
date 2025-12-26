@@ -817,41 +817,6 @@ export const analyticsAPI = {
 // Settings API
 export const settingsAPI = {
   getRoles: () => apiCall(() => apiClient.get(ENDPOINTS.ADMIN_ROLES_GET), []),
-
-  getSiteSettings: () =>
-    apiCall(() => apiClient.get("/settings/site"), {
-      siteName: "Bazarghor",
-      logo: "/logo.png",
-      taxRate: 10,
-      currency: "INR",
-      appVersion: "1.0.0",
-    }),
-
-  updateSiteSettings: (data) =>
-    apiCall(() => apiClient.put("/settings/site", data), {
-      success: true,
-      message: "Settings updated successfully",
-      data,
-    }),
-
-  getNotificationTemplates: () =>
-    apiCall(
-      () => apiClient.get("/settings/notifications"),
-      [
-        {
-          id: 1,
-          name: "Order Confirmation",
-          type: "email",
-          template: "Your order {{orderNumber}} has been confirmed.",
-        },
-        {
-          id: 2,
-          name: "Order Shipped",
-          type: "sms",
-          template: "Your order is on the way!",
-        },
-      ]
-    ),
 };
 
 // Support API
