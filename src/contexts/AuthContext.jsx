@@ -38,7 +38,6 @@ export const AuthProvider = ({ children }) => {
   const [refreshToken, setRefreshToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load auth state from localStorage on mount
   useEffect(() => {
     const loadAuthState = () => {
       try {

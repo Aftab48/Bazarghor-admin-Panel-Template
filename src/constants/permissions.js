@@ -10,6 +10,7 @@ export const PERMISSIONS = {
   CREATE_SUB_ADMIN: "create_sub_admin",
   UPDATE_SUB_ADMIN: "update_sub_admin",
   DELETE_SUB_ADMIN: "delete_sub_admin",
+  VIEW_SUB_ADMINS: "view_sub_admins",
   // Vendor management
   VIEW_VENDORS: "view_vendors",
   CREATE_VENDOR: "create_vendor",

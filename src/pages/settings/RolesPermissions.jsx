@@ -1,22 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
 import {
-  Table,
   Button,
   Space,
-  Modal,
-  Form,
   Input,
   Checkbox,
   message,
-  Tag,
   Typography,
+  Row,
+  Col,
+  List,
+  Card,
+  Empty,
+  Avatar,
 } from "antd";
-import {
-  EditOutlined,
-  DeleteOutlined,
-  TeamOutlined,
-  SearchOutlined,
-} from "@ant-design/icons";
+import { TeamOutlined, SearchOutlined } from "@ant-design/icons";
 import { settingsAPI, rolesAPI } from "../../services/api";
 import { PERMISSIONS } from "../../constants/permissions";
 
@@ -25,8 +22,7 @@ const { Title, Text } = Typography;
 const RolesPermissions = () => {
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingRole, setEditingRole] = useState(null);
+
   const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState({
     current: 1,
@@ -34,7 +30,7 @@ const RolesPermissions = () => {
     total: 0,
   });
   const [selectedPermissions, setSelectedPermissions] = useState({});
-  const [form] = Form.useForm();
+  const [activeRoleId, setActiveRoleId] = useState(null);
 
   const allPermissions = [
     { key: PERMISSIONS.VIEW_ADMINS, label: "View Admins" },
@@ -108,6 +104,11 @@ const RolesPermissions = () => {
         initial[key] = Array.isArray(r.permissions) ? [...r.permissions] : [];
       });
       setSelectedPermissions(initial);
+      // set an active role if none selected
+      if ((data || []).length > 0) {
+        const firstKey = data[0].id || data[0]._id || data[0].name;
+        setActiveRoleId((prev) => prev || firstKey);
+      }
       setPagination((prev) => ({
         ...prev,
         total: Array.isArray(data) ? data.length : 0,
@@ -119,24 +120,6 @@ const RolesPermissions = () => {
     }
   };
 
-  const handleAdd = () => {
-    setEditingRole(null);
-    form.resetFields();
-    setModalVisible(true);
-  };
-
-  const handleEdit = (role) => {
-    setEditingRole(role);
-    form.setFieldsValue(role);
-    setModalVisible(true);
-  };
-
-  const handleSubmit = async (values) => {
-    message.success(`Role ${editingRole ? "updated" : "created"} successfully`);
-    setModalVisible(false);
-    fetchRoles();
-  };
-
   const getRoleColor = (role) => {
     const key = String(role || "").toUpperCase();
     if (key === "SUPER ADMIN" || key === "SUPER_ADMIN") return "#4096ff";
@@ -145,61 +128,24 @@ const RolesPermissions = () => {
     return "#d9d9d9";
   };
 
-  const handleAddPermissions = async (role, perms) => {
-    if (!perms || perms.length === 0) return;
+  const handleUpdatePermissions = async (role) => {
     const roleKey = role.id || role._id || role.name;
     const code = role.code || role.name || roleKey;
+    const newPermissions = Array.isArray(selectedPermissions[roleKey])
+      ? selectedPermissions[roleKey]
+      : [];
 
     const prevRoles = [...roles];
     const newRoles = roles.map((r) => {
       const key = r.id || r._id || r.name;
       if (key !== roleKey) return r;
-      const current = Array.isArray(r.permissions) ? [...r.permissions] : [];
-      const updated = [...current];
-      perms.forEach((p) => {
-        if (!updated.includes(p)) updated.push(p);
-      });
-      return { ...r, permissions: updated };
+      return { ...r, permissions: [...newPermissions] };
     });
 
     setRoles(newRoles);
     try {
-      await rolesAPI.updatePermissions(code, {
-        permissions: newRoles.find((r) => (r.id || r._id || r.name) === roleKey)
-          .permissions,
-      });
-      message.success(
-        `Added ${perms.length} permission(s) to ${role.name || roleKey}`
-      );
-    } catch (err) {
-      setRoles(prevRoles);
-      message.error("Failed to update permissions. Please try again.");
-    }
-  };
-
-  const handleRemovePermissions = async (role, perms) => {
-    if (!perms || perms.length === 0) return;
-    const roleKey = role.id || role._id || role.name;
-    const code = role.code || role.name || roleKey;
-
-    const prevRoles = [...roles];
-    const newRoles = roles.map((r) => {
-      const key = r.id || r._id || r.name;
-      if (key !== roleKey) return r;
-      const current = Array.isArray(r.permissions) ? [...r.permissions] : [];
-      const updated = current.filter((p) => !perms.includes(p));
-      return { ...r, permissions: updated };
-    });
-
-    setRoles(newRoles);
-    try {
-      await rolesAPI.updatePermissions(code, {
-        permissions: newRoles.find((r) => (r.id || r._id || r.name) === roleKey)
-          .permissions,
-      });
-      message.success(
-        `Removed ${perms.length} permission(s) from ${role.name || roleKey}`
-      );
+      await rolesAPI.updatePermissions(code, { permissions: newPermissions });
+      message.success(`Updated permissions for ${role.name || roleKey}`);
     } catch (err) {
       setRoles(prevRoles);
       message.error("Failed to update permissions. Please try again.");
@@ -211,102 +157,6 @@ const RolesPermissions = () => {
     if (!term) return roles;
     return roles.filter((r) => (r?.name || "").toLowerCase().includes(term));
   }, [roles, searchText]);
-
-  const columns = [
-    {
-      title: "Role Name",
-      dataIndex: "name",
-      key: "name",
-      render: (text) => (
-        <Space align="center">
-          <TeamOutlined style={{ color: getRoleColor(text) }} />
-          <span style={{ fontWeight: 600 }}>{text}</span>
-        </Space>
-      ),
-    },
-    {
-      title: "Permissions",
-      dataIndex: "permissions",
-      key: "permissions",
-      render: (permissions, record) => {
-        const roleKey = record.id || record._id || record.name;
-        const current = Array.isArray(record.permissions)
-          ? record.permissions
-          : [];
-
-        // controlled selected values for this role
-        const selected = selectedPermissions[roleKey] || current;
-
-        // compute which checked items are additions or removals
-        const toAdd = (selected || []).filter((p) => !current.includes(p));
-        const toRemove = (selected || []).filter((p) => current.includes(p));
-
-        return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <Checkbox.Group
-              value={selected}
-              onChange={(vals) =>
-                setSelectedPermissions((prev) => ({ ...prev, [roleKey]: vals }))
-              }
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 6,
-                }}
-              >
-                {allPermissions.map((perm) => (
-                  <Checkbox key={perm.key} value={perm.key}>
-                    {perm.label}
-                  </Checkbox>
-                ))}
-              </div>
-            </Checkbox.Group>
-
-            <div style={{ display: "flex", gap: 8 }}>
-              <Button
-                size="small"
-                type="primary"
-                disabled={toAdd.length === 0}
-                onClick={() => handleAddPermissions(record, toAdd)}
-              >
-                Add
-              </Button>
-              <Button
-                size="small"
-                danger
-                disabled={toRemove.length === 0}
-                onClick={() => handleRemovePermissions(record, toRemove)}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      render: (_, record) => (
-        <Space>
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            Edit
-          </Button>
-          {String(record.name).toLowerCase() !== "super admin" && (
-            <Button size="small" danger icon={<DeleteOutlined />}>
-              Delete
-            </Button>
-          )}
-        </Space>
-      ),
-    },
-  ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -353,7 +203,6 @@ const RolesPermissions = () => {
               size="large"
               allowClear
             />
-            {/* Add Role disabled for now */}
           </div>
         </div>
       </div>
@@ -366,67 +215,175 @@ const RolesPermissions = () => {
           boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
-        <Table
-          columns={columns}
-          dataSource={filteredRoles}
-          rowKey={(r) => r.id || r._id || r.name}
-          loading={loading}
-          pagination={{
-            ...pagination,
-            total: filteredRoles?.length || 0,
-            showSizeChanger: true,
-            showTotal: (total) => `Total ${total} roles`,
-            onChange: (current, pageSize) =>
-              setPagination((prev) => ({ ...prev, current, pageSize })),
-          }}
-        />
+        <Row gutter={24}>
+          <Col xs={24} md={8} lg={6}>
+            <div style={{ marginBottom: 12 }}>
+              <Title level={5} style={{ margin: 0 }}>
+                Roles
+              </Title>
+            </div>
+
+            <div style={{ maxHeight: 520, overflowY: "auto", paddingRight: 6 }}>
+              {filteredRoles.length === 0 ? (
+                <Empty description="No roles" />
+              ) : (
+                <List
+                  itemLayout="horizontal"
+                  dataSource={filteredRoles}
+                  renderItem={(role) => {
+                    const key = role.id || role._id || role.name;
+                    const active = key === activeRoleId;
+                    return (
+                      <List.Item
+                        onClick={() => setActiveRoleId(key)}
+                        style={{
+                          cursor: "pointer",
+                          background: active ? "#f6f8ff" : "transparent",
+                          borderRadius: 8,
+                          padding: "10px 12px",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <List.Item.Meta
+                          avatar={
+                            <Avatar
+                              style={{
+                                background: getRoleColor(role.name),
+                                color: "#fff",
+                              }}
+                              icon={<TeamOutlined />}
+                            />
+                          }
+                          title={
+                            <span style={{ fontWeight: 600 }}>{role.name}</span>
+                          }
+                          description={
+                            <span style={{ fontSize: 12 }}>
+                              {(role.permissions || []).length} permissions
+                            </span>
+                          }
+                        />
+                      </List.Item>
+                    );
+                  }}
+                />
+              )}
+            </div>
+          </Col>
+
+          <Col xs={24} md={16} lg={18}>
+            <div>
+              {(() => {
+                const activeRole = roles.find(
+                  (r) => (r.id || r._id || r.name) === activeRoleId
+                );
+                if (!activeRole)
+                  return (
+                    <Empty description="Select a role to edit permissions" />
+                  );
+
+                const roleKey =
+                  activeRole.id || activeRole._id || activeRole.name;
+                const current = Array.isArray(activeRole.permissions)
+                  ? activeRole.permissions
+                  : [];
+                const selected = selectedPermissions[roleKey] || current;
+                const currentSet = new Set(current || []);
+                const hasChange =
+                  (selected || []).length !== (current || []).length ||
+                  (selected || []).some((p) => !currentSet.has(p));
+
+                return (
+                  <Card
+                    bordered={false}
+                    style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div>
+                        <Title level={5} style={{ margin: 0 }}>
+                          {activeRole.name}
+                        </Title>
+                        <Text type="secondary">
+                          {(activeRole.permissions || []).length} assigned
+                        </Text>
+                      </div>
+                      <div>
+                        <Button
+                          type="primary"
+                          onClick={() => handleUpdatePermissions(activeRole)}
+                          disabled={!hasChange}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 16 }}>
+                      <Checkbox.Group
+                        value={selected}
+                        onChange={(vals) =>
+                          setSelectedPermissions((prev) => ({
+                            ...prev,
+                            [roleKey]: vals,
+                          }))
+                        }
+                      >
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                              "repeat(4, minmax(100px, 1fr))",
+                            gap: 12,
+                          }}
+                        >
+                          {allPermissions.map((perm) => {
+                            const isChecked = (selected || []).includes(
+                              perm.key
+                            );
+                            return (
+                              <div key={perm.key}>
+                                <Checkbox
+                                  value={perm.key}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    padding: "8px 12px",
+                                    borderRadius: 16,
+                                    border: "0.5px solid #3c2f3d",
+                                    background: isChecked ? "#9dda52" : "#fff",
+                                  }}
+                                >
+                                  <span style={{ fontSize: 14 }}>
+                                    {perm.label}
+                                  </span>
+                                </Checkbox>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </Checkbox.Group>
+                    </div>
+
+                    {hasChange && (
+                      <div style={{ marginTop: 12 }}>
+                        <Text type="warning">
+                          You have unsaved changes. Click Save to save.
+                        </Text>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })()}
+            </div>
+          </Col>
+        </Row>
       </div>
-
-      <Modal
-        title={editingRole ? "Edit Role" : "Add Role"}
-        open={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        onOk={() => form.submit()}
-        okText="Save"
-        width={600}
-      >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Form.Item
-            name="name"
-            label="Role Name"
-            rules={[{ required: true, message: "Please enter role name" }]}
-          >
-            <Input placeholder="e.g., Support Manager" />
-          </Form.Item>
-
-          <Form.Item
-            name="permissions"
-            label="Permissions"
-            rules={[
-              {
-                required: true,
-                message: "Please select at least one permission",
-              },
-            ]}
-          >
-            <Checkbox.Group>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 10,
-                }}
-              >
-                {allPermissions.map((perm) => (
-                  <Checkbox key={perm.key} value={perm.key}>
-                    {perm.label}
-                  </Checkbox>
-                ))}
-              </div>
-            </Checkbox.Group>
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 };
