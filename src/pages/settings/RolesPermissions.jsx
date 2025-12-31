@@ -318,6 +318,14 @@ const RolesPermissions = () => {
                           type="primary"
                           onClick={() => handleUpdatePermissions(activeRole)}
                           disabled={!hasChange}
+                          style={{
+                            cursor: "pointer",
+                            background: hasChange ? "#9dda52" : "transparent",
+                            borderRadius: 8,
+                            padding: "10px 12px",
+                            marginBottom: 8,
+                            width: 100,
+                          }}
                         >
                           Save
                         </Button>
