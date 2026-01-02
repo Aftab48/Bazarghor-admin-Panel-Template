@@ -255,10 +255,7 @@ const Categories = () => {
 
     form.setFieldsValue({
       ...category,
-      // For parent categories, show only its own direct children (sub-categories)
-      children: derivedChildren.length
-        ? derivedChildren
-        : category?.children || [],
+      children: [],
       description: category?.description || "",
       displayOrder: Number(category?.displayOrder ?? 0),
     });

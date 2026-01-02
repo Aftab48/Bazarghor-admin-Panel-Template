@@ -13,7 +13,7 @@ function AdminLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
-  
+
   // Get auth context - will throw error if not in AuthProvider, but that's expected
   const { login, isAuthenticated, loading: authLoading } = useAuth();
 
@@ -31,7 +31,7 @@ function AdminLogin() {
         email: values.email,
         password: values.password,
       });
-      
+
       // Extract token
       let token =
         response?.data?.data?.token ||
@@ -59,13 +59,11 @@ function AdminLogin() {
         );
         return;
       }
-      
-      // Extract roles and permissions from response
+
       const responseData = response?.data?.data || response?.data || response;
       const userRoles = responseData?.roles || [ROLES.SUPER_ADMIN];
       const userPermissions = responseData?.permissions || [];
-      
-      // Fetch super admin profile to get userId
+
       let userId = null;
       try {
         const profResp = await apiClient.get(ENDPOINTS.SUPER_ADMIN_PROFILE);
@@ -73,16 +71,17 @@ function AdminLogin() {
         const data = raw?.data || raw || profResp;
         userId = data?.id || data?._id;
       } catch {}
-      
-      // Use AuthContext login method
+
       login({
         token,
         refreshToken,
-        roles: Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean),
+        roles: Array.isArray(userRoles)
+          ? userRoles
+          : [userRoles].filter(Boolean),
         permissions: Array.isArray(userPermissions) ? userPermissions : [],
         user: userId ? { id: userId } : null,
       });
-      
+
       message.success("Logged in successfully");
       navigate(from, { replace: true });
     } catch (err) {

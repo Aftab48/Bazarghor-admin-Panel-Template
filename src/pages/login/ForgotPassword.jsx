@@ -18,7 +18,6 @@ const ForgotPassword = () => {
     setErrorMsg("");
     try {
       setEmail(email);
-      // Try Super Admin first, then Staff
       try {
         await adminAPI.forgotPassword(email);
         setInfoMsg("Reset password OTP has been sent to your email.");

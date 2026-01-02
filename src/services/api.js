@@ -544,7 +544,6 @@ export const deliveryPartnersAPI = {
     }),
 };
 
-// Legacy Delivery Partners API (for backward compatibility)
 export const categoriesAPI = {
   getAll: (params = {}) => {
     const fallbackCategories = (() => {
