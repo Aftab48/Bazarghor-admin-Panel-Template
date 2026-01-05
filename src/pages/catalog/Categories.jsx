@@ -16,6 +16,9 @@ import {
   Tabs,
   Row,
   Col,
+  Modal,
+  Checkbox,
+  Tooltip,
 } from "antd";
 import {
   PlusOutlined,
@@ -26,6 +29,7 @@ import {
   CheckCircleOutlined,
   FolderOpenOutlined,
   EyeOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import { categoriesAPI } from "../../services/api";
 import useDebounce from "../../hooks/useDebounce";
@@ -33,6 +37,17 @@ import useDebounce from "../../hooks/useDebounce";
 const formatter = new Intl.NumberFormat("en-IN");
 
 const formatNumber = (value) => formatter.format(value ?? 0);
+
+// Note: textToSlug function removed as it's not currently used
+
+// Convert slug to display format (capitalize words)
+const slugToDisplay = (slug) => {
+  if (!slug) return "";
+  return String(slug)
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 
 const Categories = () => {
   const [loading, setLoading] = useState(false);
@@ -48,6 +63,11 @@ const Categories = () => {
   const [iconPreview, setIconPreview] = useState(null);
   const debouncedSearch = useDebounce(searchText, 400);
   const hasInitialized = useRef(false);
+  const [addChildModalVisible, setAddChildModalVisible] = useState(false);
+  const [_removedChildren, setRemovedChildren] = useState([]);
+  const [newChildName, setNewChildName] = useState("");
+  const [selectedDeactivated, setSelectedDeactivated] = useState([]);
+  const [originalChildren, setOriginalChildren] = useState([]);
 
   const getCategoryKeyCandidates = (category) => {
     if (!category) return [];
@@ -70,11 +90,12 @@ const Categories = () => {
 
   const getDirectChildValues = (parentCategory) => {
     const children = getDirectChildRecords(parentCategory);
+    // Return display names (not slugs) for UI display
     const values = children
-      .map(
-        (child) =>
-          child.slug || child.name || String(child.id || child._id || "")
-      )
+      .map((child) => {
+        // Prefer name for display, fallback to slug converted to display format
+        return child.name || slugToDisplay(child.slug) || String(child.id || child._id || "");
+      })
       .map((value) => String(value).trim())
       .filter(Boolean);
     return Array.from(new Set(values));
@@ -208,7 +229,7 @@ const Categories = () => {
       const normalized = raw.map((c) => normalizeCategory(c)).filter(Boolean);
 
       setCategories(normalized);
-    } catch (error) {
+    } catch {
       message.error("Failed to fetch categories");
     } finally {
       setLoading(false);
@@ -242,6 +263,10 @@ const Categories = () => {
     });
     setIconFile(null);
     setIconPreview(null);
+    setRemovedChildren([]);
+    setSelectedDeactivated([]);
+    setNewChildName("");
+    setOriginalChildren([]);
     setModalVisible(true);
   };
 
@@ -253,15 +278,22 @@ const Categories = () => {
       ? getDirectChildValues(category)
       : [];
 
+    // Store original children for comparison when submitting
+    const originalChildRecords = isParentCategory
+      ? getDirectChildRecords(category)
+      : [];
+    setOriginalChildren(originalChildRecords);
+
     form.setFieldsValue({
       ...category,
-      children: [],
+      children: derivedChildren, // Populate existing children
       description: category?.description || "",
       displayOrder: Number(category?.displayOrder ?? 0),
     });
     // show existing icon (if any) as preview when editing
     setIconFile(null);
     setIconPreview(category?.icon || null);
+    setRemovedChildren([]); // Reset removed children when opening edit
     setModalVisible(true);
   };
 
@@ -277,7 +309,7 @@ const Categories = () => {
       fetchCategories({
         search: debouncedSearch,
       });
-    } catch (error) {
+    } catch {
       message.error("Failed to delete category");
     }
   };
@@ -292,35 +324,128 @@ const Categories = () => {
     setViewingCategory(null);
   };
 
+  // Get deactivated children (removed ones that were originally children)
+  const getDeactivatedChildren = () => {
+    if (!editingCategory || editingCategory?.parentId) return [];
+    
+    const originalChildren = getDirectChildRecords(editingCategory);
+    const currentChildren = form.getFieldValue("children") || [];
+    const currentChildrenSet = new Set(
+      currentChildren.map((c) => {
+        // Compare using display names
+        const displayName = String(c).trim().toLowerCase();
+        return displayName;
+      })
+    );
+    
+    // Find children that were removed (exist in original but not in current)
+    return originalChildren.filter((child) => {
+      const childDisplayName = (child.name || slugToDisplay(child.slug) || String(child.id || child._id || "")).trim().toLowerCase();
+      return !currentChildrenSet.has(childDisplayName);
+    });
+  };
+
+  // Handle removing a child category
+  const handleRemoveChild = (childDisplayNameToRemove) => {
+    const currentChildren = form.getFieldValue("children") || [];
+    const updatedChildren = currentChildren.filter(
+      (child) => String(child).trim().toLowerCase() !== String(childDisplayNameToRemove).trim().toLowerCase()
+    );
+    form.setFieldsValue({ children: updatedChildren });
+    
+    // Find the removed child in original children by matching display name
+    const removedChild = originalChildren.find(
+      (child) => {
+        const childDisplayName = (child.name || slugToDisplay(child.slug) || String(child.id || child._id || "")).trim().toLowerCase();
+        return childDisplayName === String(childDisplayNameToRemove).trim().toLowerCase();
+      }
+    );
+    
+    // Track removed child if it was an original child
+    if (removedChild) {
+      setRemovedChildren((prev) => {
+        const exists = prev.some(
+          (r) => (r.id || r._id) === (removedChild.id || removedChild._id)
+        );
+        if (!exists) return [...prev, removedChild];
+        return prev;
+      });
+    }
+  };
+
+  // Handle adding children from modal
+  const handleAddChildren = (selectedChildren, newChildName) => {
+    const currentChildren = form.getFieldValue("children") || [];
+    const newChildrenSet = new Set(
+      currentChildren.map((c) => String(c).trim().toLowerCase())
+    );
+    
+    // Add selected deactivated children (as display names)
+    // selectedChildren contains slugs, we need to find the category and get its name
+    selectedChildren.forEach((childSlug) => {
+      // Find the category by slug to get its actual name
+      const childCategory = categories.find(
+        (cat) => cat.slug === childSlug || cat.id === childSlug || cat._id === childSlug
+      );
+      // Use the category's name if found, otherwise convert slug to display format
+      const displayName = childCategory 
+        ? (childCategory.name || slugToDisplay(childCategory.slug))
+        : slugToDisplay(childSlug);
+      const normalized = String(displayName).trim().toLowerCase();
+      
+      if (!newChildrenSet.has(normalized)) {
+        newChildrenSet.add(normalized);
+        currentChildren.push(String(displayName).trim());
+      }
+    });
+    
+    // Add new child name if provided (as display name)
+    if (newChildName && newChildName.trim()) {
+      const normalized = String(newChildName).trim().toLowerCase();
+      if (!newChildrenSet.has(normalized)) {
+        currentChildren.push(String(newChildName).trim());
+      }
+    }
+    
+    form.setFieldsValue({ children: currentChildren });
+    setAddChildModalVisible(false);
+    setNewChildName("");
+    setSelectedDeactivated([]);
+    
+    // Remove from removedChildren if it was there
+    if (selectedChildren.length > 0) {
+      setRemovedChildren((prev) =>
+        prev.filter((r) => {
+          const rSlug = r.slug || String(r.id || r._id || "");
+          return !selectedChildren.some(
+            (sc) => String(sc).trim().toLowerCase() === String(rSlug).trim().toLowerCase()
+          );
+        })
+      );
+    }
+  };
+
   const handleSubmit = async (values) => {
     try {
       const normalizedChildren = Array.isArray(values.children)
         ? values.children.map((child) => child.trim()).filter(Boolean)
         : [];
 
-      const normalizeChildKey = (value) =>
-        String(value || "")
-          .trim()
-          .toLowerCase();
-
-      const getNewChildrenOnly = ({ existing = [], submitted = [] }) => {
-        const existingSet = new Set(
-          existing.map(normalizeChildKey).filter(Boolean)
+      // Backend expects category names (display text), not slugs
+      // For existing categories, find their actual names
+      // For new categories, use the display name as the name
+      const childrenAsNames = normalizedChildren.map((displayName) => {
+        // Check if this matches an existing category's display name
+        const existingCategory = categories.find(
+          (cat) => {
+            const catDisplayName = cat.name || slugToDisplay(cat.slug);
+            return catDisplayName === displayName || cat.name === displayName;
+          }
         );
-        const uniqueNew = new Set();
-        const result = [];
-
-        submitted.forEach((child) => {
-          const key = normalizeChildKey(child);
-          if (!key) return;
-          if (existingSet.has(key)) return;
-          if (uniqueNew.has(key)) return;
-          uniqueNew.add(key);
-          result.push(String(child).trim());
-        });
-
-        return result;
-      };
+        // If it's an existing category, use its actual name
+        // Otherwise, use the display name as the new category name
+        return existingCategory ? existingCategory.name : displayName;
+      });
 
       const payload = {
         ...values,
@@ -329,26 +454,52 @@ const Categories = () => {
         description: values.description?.trim() || "",
         displayOrder: Number(values.displayOrder) || 0,
       };
+      
       if (editingCategory) {
         const isParentCategory = !editingCategory?.parentId;
         if (isParentCategory) {
-          const existingChildren = getDirectChildValues(editingCategory);
-          const newChildren = getNewChildrenOnly({
-            existing: existingChildren,
-            submitted: normalizedChildren,
-          });
-
-          if (newChildren.length) {
-            payload.children = newChildren;
+          // Always send children array as names for parent categories
+          payload.children = Array.from(
+            new Set(childrenAsNames.filter(Boolean))
+          );
+          
+          // Calculate which children were removed by comparing original with current
+          // Create a set of current children (using both display names and actual names for matching)
+          const currentChildrenSet = new Set(
+            childrenAsNames.map((name) => String(name).trim().toLowerCase())
+          );
+          
+          // Find removed children - those in originalChildren but not in current
+          // Match by comparing display names (what's shown in UI) with original children
+          const removedChildNames = originalChildren
+            .filter((child) => {
+              // Get the display name that would be shown in the UI
+              const childDisplayName = (child.name || slugToDisplay(child.slug) || String(child.id || child._id || "")).trim().toLowerCase();
+              // Check if this display name is NOT in the current children list
+              return !currentChildrenSet.has(childDisplayName);
+            })
+            .map((child) => {
+              // Backend expects actual category names, trimmed and validated
+              const name = (child.name || "").trim();
+              // Ensure name is valid: non-empty, between 1-120 characters
+              if (name && name.length >= 1 && name.length <= 120) {
+                return name;
+              }
+              return null;
+            })
+            .filter((name) => name !== null && name !== undefined && name !== ""); // Strict filtering
+          
+          // Send removed children to backend only if we have valid names
+          // This prevents validation errors when sending via FormData
+          if (removedChildNames.length > 0) {
+            payload.removeChildren = removedChildNames;
           }
         }
       } else {
-        // Creating a new category (parent): send all children as new
-        if (normalizedChildren.length) {
+        // Creating a new category (parent): send all children as names
+        if (childrenAsNames.length) {
           payload.children = Array.from(
-            new Set(
-              normalizedChildren.map((c) => String(c).trim()).filter(Boolean)
-            )
+            new Set(childrenAsNames.filter(Boolean))
           );
         }
       }
@@ -361,12 +512,24 @@ const Categories = () => {
         Object.keys(payload).forEach((k) => {
           const v = payload[k];
           if (Array.isArray(v)) {
-            v.forEach((item) => {
-              if (item !== undefined && item !== null)
-                fd.append(k, String(item));
-            });
+            // For arrays, only append non-empty, valid items
+            // Filter out empty strings, null, undefined before appending
+            const validItems = v.filter(
+              (item) => item !== undefined && item !== null && String(item).trim() !== ""
+            );
+            // Only append array fields if they have valid items
+            // This prevents validation errors with empty arrays or invalid entries
+            if (validItems.length > 0) {
+              validItems.forEach((item) => {
+                fd.append(k, String(item).trim());
+              });
+            }
+            // Don't append empty arrays - let backend handle as undefined/optional
           } else {
-            fd.append(k, v === undefined || v === null ? "" : String(v));
+            // For non-array values, append if not undefined/null
+            if (v !== undefined && v !== null) {
+              fd.append(k, String(v));
+            }
           }
         });
         // append file object
@@ -396,7 +559,7 @@ const Categories = () => {
       fetchCategories({
         search: debouncedSearch,
       });
-    } catch (error) {
+    } catch {
       message.error("Failed to save category");
     }
   };
@@ -447,39 +610,7 @@ const Categories = () => {
     return acc;
   }, {});
 
-  const childCategoryOptions = (() => {
-    // For parent-category update: show its existing direct sub-categories.
-    if (editingCategory && !editingCategory?.parentId) {
-      const directChildren = getDirectChildRecords(editingCategory);
-      return directChildren
-        .map((child) => {
-          const value =
-            child.slug || child.name || String(child.id || child._id || "");
-          const trimmed = String(value || "").trim();
-          if (!trimmed) return null;
-          return {
-            label: child.name,
-            value: trimmed,
-          };
-        })
-        .filter(Boolean);
-    }
-
-    // Default: existing global list (useful for add flow / fallback).
-    return categories.reduce((options, category) => {
-      const value =
-        category.slug ||
-        category.name ||
-        String(category.id || category._id || "");
-      if (!value) {
-        return options;
-      }
-      if (!options.find((option) => option.value === value)) {
-        options.push({ label: category.name || value, value });
-      }
-      return options;
-    }, []);
-  })();
+  // Note: childCategoryOptions removed as it's not currently used in the UI
 
   const getParentName = (parentId) => {
     if (!parentId) return "-";
@@ -857,6 +988,11 @@ const Categories = () => {
           setIconFile(null);
           setIconPreview(null);
           form.resetFields();
+          setAddChildModalVisible(false);
+          setSelectedDeactivated([]);
+          setNewChildName("");
+          setRemovedChildren([]);
+          setOriginalChildren([]);
         }}
         width={680}
         destroyOnClose
@@ -939,7 +1075,7 @@ const Categories = () => {
                       try {
                         const url = URL.createObjectURL(file.originFileObj);
                         setIconPreview(url);
-                      } catch (e) {
+                      } catch {
                         setIconPreview(null);
                       }
                     } else if (file && file.url) {
@@ -976,20 +1112,88 @@ const Categories = () => {
             </div>
           </Form.Item>
 
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Space size={4}>
+                <span>Child Categories</span>
+                <Tooltip title={
+                  editingCategory?.parentId
+                    ? "Only parent categories can have child categories"
+                    : "Manage child categories for this parent category"
+                }>
+                  <QuestionCircleOutlined style={{ color: "rgba(0, 0, 0, 0.45)", cursor: "help" }} />
+                </Tooltip>
+              </Space>
+              {!editingCategory?.parentId && (
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setAddChildModalVisible(true)}
+                  style={{
+                    background: "#9dda52",
+                    borderColor: "#9dda52",
+                    color: "#3c2f3d",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  +Add
+                </Button>
+              )}
+            </div>
+          </div>
+
           <Form.Item
             name="children"
-            label="Child Categories"
-            tooltip="Select or type child categories"
+            extra={
+              editingCategory?.parentId
+                ? "Subcategories cannot have child categories"
+                : "Click +Add to add new child categories or restore previously removed ones"
+            }
           >
-            <Select
-              mode="tags"
-              placeholder="Select or type child category"
-              options={childCategoryOptions}
-              optionFilterProp="label"
-              maxTagCount={0}
-              tagRender={() => null}
-              allowClear
-            />
+            {(() => {
+              const currentChildren = form.getFieldValue("children") || [];
+              if (editingCategory?.parentId) {
+                return <div style={{ color: "#999" }}>Subcategories cannot have child categories</div>;
+              }
+              
+              if (currentChildren.length === 0) {
+                return (
+                  <div style={{ color: "#999", padding: "8px 0" }}>
+                    No child categories. Click +Add to add some.
+                  </div>
+                );
+              }
+              
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    padding: "8px 0",
+                  }}
+                >
+                  {currentChildren.map((child, index) => (
+                    <Tag
+                      key={`${child}-${index}`}
+                      closable
+                      onClose={() => handleRemoveChild(child)}
+                      style={{
+                        margin: 0,
+                        padding: "4px 8px",
+                        fontSize: "14px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      {child}
+                    </Tag>
+                  ))}
+                </div>
+              );
+            })()}
           </Form.Item>
 
           <div
@@ -1076,6 +1280,92 @@ const Categories = () => {
             })()
           : null}
       </Drawer>
+
+      {/* Add Child Categories Modal */}
+      <Modal
+        title="Add Child Categories"
+        open={addChildModalVisible}
+        onOk={() => {
+          if (selectedDeactivated.length > 0 || newChildName.trim()) {
+            handleAddChildren(selectedDeactivated, newChildName);
+            setSelectedDeactivated([]);
+            setNewChildName("");
+          } else {
+            message.warning("Please select categories to restore or enter a new category name");
+          }
+        }}
+        onCancel={() => {
+          setAddChildModalVisible(false);
+          setNewChildName("");
+          setSelectedDeactivated([]);
+        }}
+        okText="Add"
+        cancelText="Cancel"
+        width={600}
+        zIndex={1001}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Deactivated Children Section */}
+          {(() => {
+            const deactivated = getDeactivatedChildren();
+            
+            if (deactivated.length > 0) {
+              return (
+                <div>
+                  <div style={{ marginBottom: 8, fontWeight: 500 }}>
+                    Previously Removed Categories (Select to restore):
+                  </div>
+                  <div
+                    style={{
+                      maxHeight: 200,
+                      overflowY: "auto",
+                      border: "1px solid #d9d9d9",
+                      borderRadius: 4,
+                      padding: 8,
+                    }}
+                  >
+                    <Checkbox.Group
+                      value={selectedDeactivated}
+                      onChange={setSelectedDeactivated}
+                      style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}
+                    >
+                      {deactivated.map((child) => {
+                        const childSlug = child.slug || String(child.id || child._id || "");
+                        const childDisplayName = child.name || slugToDisplay(child.slug) || childSlug;
+                        return (
+                          <Checkbox key={child.id || child._id} value={childSlug}>
+                            {childDisplayName}
+                          </Checkbox>
+                        );
+                      })}
+                    </Checkbox.Group>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+          {/* Add New Child Category Section */}
+          <div>
+            <div style={{ marginBottom: 8, fontWeight: 500 }}>
+              Add New Child Category:
+            </div>
+            <Input
+              placeholder="Enter new child category name"
+              value={newChildName}
+              onChange={(e) => setNewChildName(e.target.value)}
+              onPressEnter={() => {
+                if (newChildName.trim()) {
+                  handleAddChildren(selectedDeactivated, newChildName);
+                  setSelectedDeactivated([]);
+                  setNewChildName("");
+                }
+              }}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

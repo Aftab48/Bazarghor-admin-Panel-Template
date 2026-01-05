@@ -157,10 +157,24 @@ The admin panel is designed to work with a backend API. It includes:
 
 Create a `.env` file in the root directory:
 
+**For Development:**
 ```env
 VITE_API_BASE_URL=http://localhost:5000/api
 VITE_USE_MOCK_DATA=false
 ```
+
+**For Production:**
+```env
+VITE_API_BASE_URL=https://your-backend-api-domain.com/api
+VITE_USE_MOCK_DATA=false
+```
+
+> **Important**: When deploying to production (e.g., https://admin.bazarghorr.com), you **must** set `VITE_API_BASE_URL` to your production backend API URL. The default value points to `http://localhost:5000/api`, which will not work in production.
+
+**Setting Environment Variables:**
+- For Vite projects, environment variables must be prefixed with `VITE_` to be accessible in the browser
+- These variables are embedded at build time, so you need to rebuild after changing them
+- Most hosting platforms (Vercel, Netlify, etc.) allow you to set environment variables in their dashboard
 
 ## Getting Started
 
@@ -188,15 +202,30 @@ pnpm dev
 
 ### Build for Production
 
-```bash
-pnpm build
-```
+1. **Set your production API URL** in `.env`:
+   ```env
+   VITE_API_BASE_URL=https://your-backend-api-domain.com/api
+   ```
+
+2. Build the project:
+   ```bash
+   pnpm build
+   ```
+
+3. The production build will be in the `dist/` folder
 
 ### Preview Production Build
 
 ```bash
 pnpm preview
 ```
+
+### Production Deployment Checklist
+
+- [ ] Set `VITE_API_BASE_URL` to your production backend API URL
+- [ ] Ensure your backend CORS configuration includes your admin panel domain (e.g., `https://admin.bazarghorr.com`)
+- [ ] Rebuild the application after setting environment variables
+- [ ] Verify API connectivity from the deployed admin panel
 
 ## Features Implementation
 
