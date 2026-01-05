@@ -1,5 +1,6 @@
 // API Endpoints Configuration
-export const API_BASE_URL = "http://bazarghorr-backend-api.ap-south-1.elasticbeanstalk.com/api";
+export const API_BASE_URL =
+  "http://bazarghorr-backend-api.ap-south-1.elasticbeanstalk.com/api";
 
 export const ENDPOINTS = {
   // Auth
