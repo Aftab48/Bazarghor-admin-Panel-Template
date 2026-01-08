@@ -329,6 +329,7 @@ function Login() {
               marginTop: 8,
               color: "#3c2f3d",
               backgroundColor: "#9dda52",
+              border: "0.2px solid #3c2f3d",
             }}
           >
             Login

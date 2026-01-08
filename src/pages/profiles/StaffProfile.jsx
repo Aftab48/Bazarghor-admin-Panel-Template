@@ -206,6 +206,7 @@ const StaffProfile = () => {
               background: "#9dda52",
               color: "#3c2f3d",
               fontWeight: "bold",
+              border: "0.2px solid #3c2f3d",
             }}
             htmlType="submit"
             loading={saving}
@@ -252,6 +253,7 @@ const StaffProfile = () => {
               background: "#9dda52",
               color: "#3c2f3d",
               fontWeight: "bold",
+              border: "0.2px solid #3c2f3d",
             }}
             htmlType="submit"
             loading={pwdSaving}
@@ -282,7 +284,11 @@ const StaffProfile = () => {
             <Button
               icon={<UploadOutlined />}
               loading={avatarSaving}
-              style={{ background: "#9dda52", color: "#3c2f3d" }}
+              style={{
+                background: "#9dda52",
+                color: "#3c2f3d",
+                border: "0.2px solid #3c2f3d",
+              }}
             >
               Upload New
             </Button>

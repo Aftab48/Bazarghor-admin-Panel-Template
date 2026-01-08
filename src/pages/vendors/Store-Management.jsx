@@ -352,8 +352,8 @@ const VendorManagement = () => {
           record.id || record._id || record.vendorId || record.storeId;
         return (
           <Switch
-            checkedChildren="APPROVED"
-            unCheckedChildren="REJECTED"
+            checkedChildren="Approved"
+            unCheckedChildren="Rejected"
             checked={statusCode === VENDOR_STATUS.APPROVED}
             loading={statusUpdatingId === vendorId}
             style={{

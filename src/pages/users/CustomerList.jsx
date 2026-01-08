@@ -13,6 +13,7 @@ import {
   Drawer,
   Row,
   Col,
+  Descriptions,
 } from "antd";
 import {
   SearchOutlined,
@@ -25,8 +26,13 @@ import {
 import { customersAPI } from "../../services/api";
 import dayjs from "dayjs";
 import StatusTag from "../../components/common/StatusTag";
+import {
+  NeutralButton,
+  AddNeutralButton,
+} from "../../components/common/NeutralButton";
 import { useAuth } from "../../hooks/useAuth";
 import { ROLES } from "../../constants/permissions";
+const getStatusColor = (checked) => (checked ? "#9dda52" : "#ffbc2c ");
 
 const CustomerList = () => {
   const [loading, setLoading] = useState(false);
@@ -44,6 +50,7 @@ const CustomerList = () => {
   const [viewForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
   const { roles } = useAuth();
 
   const canAddCustomer = () => {
@@ -176,6 +183,39 @@ const CustomerList = () => {
     }
   };
 
+  const onToggleActive = async (record, nextStatus) => {
+    const customerId = record._id || record.id || record.userId;
+    if (!customerId) {
+      message.error("Customer id missing; cannot update status");
+      return;
+    }
+
+    setTogglingId(customerId);
+    try {
+      const formData = new FormData();
+      formData.append("isActive", nextStatus ? "true" : "false");
+      await customersAPI.update(customerId, formData);
+
+      setCustomers((prev) =>
+        prev.map((c) =>
+          (c._id || c.id || c.userId) === customerId
+            ? { ...c, isActive: nextStatus }
+            : c
+        )
+      );
+
+      message.success(
+        `Customer marked as ${nextStatus ? "active" : "inactive"}`
+      );
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to update status"
+      );
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const columns = [
     {
       title: "Customer Name",
@@ -208,19 +248,24 @@ const CustomerList = () => {
       render: (phone, record) => phone || record.mobNo || "N/A",
     },
     {
-      title: "Status",
-      dataIndex: "isActive",
-      key: "isActive",
-      render: (isActive) => {
-        const status = isActive === true ? "Active" : "InActive";
-        return <StatusTag status={status} />;
-      },
-      filters: [
-        { text: "Active", value: true },
-        { text: "InActive", value: false },
-      ],
-      onFilter: (value, record) => {
-        return record.isActive === value;
+      title: "Active-Status",
+      key: "isActiveToggle",
+      render: (_, r) => {
+        const id = r?._id || r?.id || r?.userId;
+        const isActive = !!r?.isActive;
+        return (
+          <Switch
+            checked={isActive}
+            loading={togglingId === id}
+            onChange={(checked) => onToggleActive(r, checked)}
+            checkedChildren="Active"
+            unCheckedChildren="InActive"
+            style={{
+              backgroundColor: getStatusColor(isActive),
+              borderColor: getStatusColor(isActive),
+            }}
+          />
+        );
       },
     },
     {
@@ -375,6 +420,7 @@ const CustomerList = () => {
                   color: "#3c2f3d",
                   width: "100%",
                   maxWidth: 180,
+                  border: "0.2px solid #3c2f3d",
                 }}
               >
                 Add Customer
@@ -417,69 +463,81 @@ const CustomerList = () => {
           viewForm.resetFields();
           setSelectedRecord(null);
         }}
-        width={560}
+        width={600}
         destroyOnClose
         placement="right"
       >
-        <Form form={viewForm} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item style={{ textAlign: "center" }}>
+        <div
+          style={{
+            marginTop: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <Avatar
-              size={64}
+              size={72}
               src={selectedRecord?.profilePicture?.uri}
               icon={<UserOutlined />}
+              style={{ backgroundColor: "#f2f2f2" }}
             />
-          </Form.Item>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="firstName" label="First Name">
-                <Input readOnly size="middle" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="lastName" label="Last Name">
-                <Input readOnly size="middle" />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="email" label="Email">
-            <Input readOnly size="middle" />
-          </Form.Item>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="mobNo" label="Mobile Number">
-                <Input readOnly size="middle" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="dob" label="Date of Birth">
-                <Input readOnly size="middle" />
-              </Form.Item>
-            </Col>
-          </Row>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#3c2f3d" }}>
+                {selectedRecord?.firstName || "Customer"}
+              </div>
+              <div style={{ color: "#555" }}>
+                {selectedRecord?.email || "N/A"}
+              </div>
+            </div>
+          </div>
+
+          <Descriptions bordered column={1} size="middle">
+            <Descriptions.Item label="First Name">
+              {selectedRecord?.firstName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Last Name">
+              {selectedRecord?.lastName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Email">
+              {selectedRecord?.email || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Mobile">
+              {selectedRecord?.mobNo || selectedRecord?.phone || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Date of Birth">
+              {selectedRecord?.dob
+                ? dayjs(selectedRecord?.dob).format("YYYY-MM-DD")
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Active Status">
+              <StatusTag
+                status={selectedRecord?.isActive ? "Active" : "Inactive"}
+                style={{
+                  backgroundColor: getStatusColor(selectedRecord?.isActive),
+                  borderColor: getStatusColor(selectedRecord?.isActive),
+                }}
+              />
+            </Descriptions.Item>
+          </Descriptions>
 
           <div
             style={{
               display: "flex",
               justifyContent: "flex-end",
-              marginTop: 8,
             }}
           >
-            <Button
+            <NeutralButton
               onClick={() => {
                 setViewModalVisible(false);
                 viewForm.resetFields();
                 setSelectedRecord(null);
               }}
-              style={{
-                backgroundColor: "#3c2f3d",
-                color: "#ffffff",
-                borderColor: "#3c2f3d",
-              }}
             >
               Close
-            </Button>
+            </NeutralButton>
           </div>
-        </Form>
+        </div>
       </Drawer>
 
       {/* Edit Drawer */}
@@ -554,36 +612,43 @@ const CustomerList = () => {
             valuePropName="checked"
             initialValue={false}
           >
-            <Switch checkedChildren="Active" unCheckedChildren="InActive" />
+            <Switch
+              checkedChildren="Active"
+              unCheckedChildren="InActive"
+              style={{
+                backgroundColor: getStatusColor(form.getFieldValue("isActive")),
+                borderColor: getStatusColor(form.getFieldValue("isActive")),
+              }}
+            />
           </Form.Item>
 
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 8,
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              width: "100%",
             }}
           >
-            <Button
+            <NeutralButton
               onClick={() => {
                 setEditModalVisible(false);
                 form.resetFields();
                 setSelectedRecord(null);
               }}
-              style={{
-                backgroundColor: "#3c2f3d",
-                color: "#ffffff",
-                borderColor: "#3c2f3d",
-              }}
             >
               Cancel
-            </Button>
+            </NeutralButton>
             <Button
               type="primary"
               htmlType="submit"
               loading={submitting}
-              style={{ background: "#9dda52", color: "#3c2f3d" }}
+              style={{
+                background: "#9dda52",
+                color: "#3c2f3d",
+                border: "0.2px solid #3c2f3d",
+              }}
             >
               Update Customer
             </Button>
@@ -662,19 +727,20 @@ const CustomerList = () => {
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 8,
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              width: "100%",
             }}
           >
-            <Button
+            <NeutralButton
               onClick={() => {
                 setAddModalVisible(false);
                 form.resetFields();
               }}
             >
               Cancel
-            </Button>
+            </NeutralButton>
             <Button
               type="primary"
               htmlType="submit"

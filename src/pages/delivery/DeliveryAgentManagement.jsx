@@ -175,6 +175,7 @@ const DeliveryAgentManagement = () => {
             backgroundColor: "#9dda52",
             color: "#3c2f3d",
             borderColor: "#9dda52",
+            border: "0.2px solid #3c2f3d",
           }}
           icon={<CarOutlined />}
           onMouseEnter={(e) => {

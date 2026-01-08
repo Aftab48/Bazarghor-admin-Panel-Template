@@ -16,6 +16,7 @@ import {
   Row,
   Col,
 } from "antd";
+import { NeutralButton } from "../../components/common/NeutralButton";
 
 const { TextArea } = Input;
 import {
@@ -1160,7 +1161,7 @@ const Products = () => {
               marginTop: 12,
             }}
           >
-            <Button onClick={handleAddCancel}>Cancel</Button>
+            <NeutralButton onClick={handleAddCancel}>Cancel</NeutralButton>
             <Button
               type="primary"
               onClick={() => addForm.submit()}
@@ -1357,7 +1358,7 @@ const Products = () => {
               marginTop: 12,
             }}
           >
-            <Button onClick={handleEditCancel}>Cancel</Button>
+            <NeutralButton onClick={handleEditCancel}> Cancel</NeutralButton>
             <Button
               type="primary"
               onClick={() => form.submit()}

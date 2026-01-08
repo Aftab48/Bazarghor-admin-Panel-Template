@@ -13,6 +13,7 @@ import {
   Drawer,
   Row,
   Col,
+  Descriptions,
 } from "antd";
 import {
   SearchOutlined,
@@ -24,9 +25,14 @@ import {
 } from "@ant-design/icons";
 import { deliveryPartnersAPI } from "../../services/api";
 import StatusTag from "../../components/common/StatusTag";
+import {
+  NeutralButton,
+  AddNeutralButton,
+} from "../../components/common/NeutralButton";
 import { useAuth } from "../../hooks/useAuth";
 import { ROLES } from "../../constants/permissions";
 import dayjs from "dayjs";
+const getStatusColor = (checked) => (checked ? "#9dda52" : "#ffbc2c ");
 
 const DeliveryAgentList = () => {
   const [loading, setLoading] = useState(false);
@@ -41,8 +47,8 @@ const DeliveryAgentList = () => {
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
-  const [vehicleDetails, setVehicleDetails] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [togglingId, setTogglingId] = useState(null);
   const [form] = Form.useForm();
   const [viewForm] = Form.useForm();
   const [editForm] = Form.useForm();
@@ -62,7 +68,6 @@ const DeliveryAgentList = () => {
 
   useEffect(() => {
     fetchAgents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAgents = async () => {
@@ -78,7 +83,7 @@ const DeliveryAgentList = () => {
       }
     } catch (error) {
       message.error(
-        `Failed to fetch Delivery Partners: ${error.message || "Unknown error"}`
+        `Failed to fetch delivery agents: ${error?.message || "Unknown error"}`
       );
       setAgents([]);
       setPagination((prev) => ({ ...prev, total: 0 }));
@@ -87,39 +92,54 @@ const DeliveryAgentList = () => {
     }
   };
 
-  const handleView = (record) => {
-    setSelectedRecord(record);
-    viewForm.setFieldsValue({
-      firstName: record?.firstName || "",
-      lastName: record?.lastName || "",
-      email: record?.email || "",
-      mobNo: record?.mobNo || record?.phone || "",
-      gender: record?.gender || "",
-    });
-    setViewModalVisible(true);
+  const handleView = async (record) => {
+    const agentId = record?._id || record?.id;
+    if (!agentId) return;
+    try {
+      const data = await deliveryPartnersAPI.getById(agentId);
+      setSelectedRecord(data);
+      viewForm.setFieldsValue({
+        firstName: data?.firstName || "",
+        lastName: data?.lastName || "",
+        email: data?.email || "",
+        mobNo: data?.mobNo || "",
+        gender: data?.gender || "",
+        dob: data?.dob ? dayjs(data.dob) : null,
+      });
+      setViewModalVisible(true);
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message ||
+          "Failed to fetch delivery agent details"
+      );
+    }
   };
 
   const handleEdit = async (record) => {
+    const agentId = record?._id || record?.id;
+    if (!agentId) return;
     try {
-      const data = await deliveryPartnersAPI.getById(record.id || record._id);
+      const data = await deliveryPartnersAPI.getById(agentId);
       setSelectedRecord(data);
       editForm.setFieldsValue({
         firstName: data?.firstName || "",
         lastName: data?.lastName || "",
         email: data?.email || "",
-        mobNo: data?.mobNo || data?.phone || "",
-        gender: data?.gender || "",
+        mobNo: data?.mobNo || "",
         dob: data?.dob ? dayjs(data.dob) : null,
-        vehicleType: data?.vehicleDetails?.vehicleType || "",
-        vehicleNo: data?.vehicleDetails?.vehicleNo || "",
-        driverLicenseNo: data?.vehicleDetails?.driverLicenseNo || "",
+        gender: data?.gender || "",
+        vehicleType:
+          data?.vehicleDetails?.vehicleType || data?.vehicleType || "",
+        vehicleNo: data?.vehicleDetails?.vehicleNo || data?.vehicleNo || "",
+        driverLicenseNo:
+          data?.vehicleDetails?.driverLicenseNo || data?.driverLicenseNo || "",
         isActive: data?.isActive ?? false,
       });
-      setVehicleDetails(data?.vehicleDetails || null);
       setEditModalVisible(true);
     } catch (error) {
       message.error(
-        error?.response?.data?.message || "Failed to fetch agent details"
+        error?.response?.data?.message ||
+          "Failed to fetch delivery agent details"
       );
     }
   };
@@ -138,6 +158,37 @@ const DeliveryAgentList = () => {
       message.success("Agent deleted successfully");
     } catch (error) {
       message.error(error?.response?.data?.message || "Failed to delete agent");
+    }
+  };
+
+  const onToggleActive = async (record, nextStatus) => {
+    const agentId = record._id || record.id || record.userId;
+    if (!agentId) {
+      message.error("Agent id missing; cannot update status");
+      return;
+    }
+
+    setTogglingId(agentId);
+    try {
+      const formData = new FormData();
+      formData.append("isActive", nextStatus ? "true" : "false");
+      await deliveryPartnersAPI.update(agentId, formData);
+
+      setAgents((prev) =>
+        prev.map((agent) =>
+          (agent._id || agent.id || agent.userId) === agentId
+            ? { ...agent, isActive: nextStatus }
+            : agent
+        )
+      );
+
+      message.success(`Agent marked as ${nextStatus ? "active" : "inactive"}`);
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to update status"
+      );
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -222,20 +273,25 @@ const DeliveryAgentList = () => {
       },
     },
     {
-      title: "Status",
-      dataIndex: "isActive",
-      key: "isActive",
-      render: (isActive) => {
-        if (isActive === undefined || isActive === null)
-          return <StatusTag status="unknown" />;
-        const status = isActive ? "Active" : "InActive";
-        return <StatusTag status={status} />;
+      title: "Active-Status",
+      key: "isActiveToggle",
+      render: (_, record) => {
+        const id = record?._id || record?.id || record?.userId;
+        const isActive = !!record?.isActive;
+        return (
+          <Switch
+            checked={isActive}
+            loading={togglingId === id}
+            onChange={(checked) => onToggleActive(record, checked)}
+            checkedChildren="Active"
+            unCheckedChildren="InActive"
+            style={{
+              backgroundColor: getStatusColor(isActive),
+              borderColor: getStatusColor(isActive),
+            }}
+          />
+        );
       },
-      filters: [
-        { text: "Active", value: true },
-        { text: "InActive", value: false },
-      ],
-      onFilter: (value, record) => record.isActive === value,
     },
     {
       title: "Actions",
@@ -366,6 +422,7 @@ const DeliveryAgentList = () => {
                   color: "#3c2f3d",
                   width: "100%",
                   maxWidth: 180,
+                  border: "0.2px solid #3c2f3d",
                 }}
               >
                 Add Agent
@@ -496,32 +553,27 @@ const DeliveryAgentList = () => {
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 8,
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              width: "100%",
             }}
           >
-            <Button
+            <NeutralButton
               onClick={() => {
                 setAddModalVisible(false);
                 form.resetFields();
               }}
             >
               Cancel
-            </Button>
-            <Button
+            </NeutralButton>
+            <AddNeutralButton
               type="primary"
               htmlType="submit"
               loading={submitting}
-              style={{
-                background: "#9dda52",
-                borderColor: "#9dda52",
-                color: "#3c2f3d",
-                fontWeight: "bold",
-              }}
             >
               Create Delivery Agent
-            </Button>
+            </AddNeutralButton>
           </div>
         </Form>
       </Drawer>
@@ -624,39 +676,43 @@ const DeliveryAgentList = () => {
             valuePropName="checked"
             initialValue={false}
           >
-            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+            <Switch
+              checkedChildren="Active"
+              unCheckedChildren="Inactive"
+              style={{
+                backgroundColor: getStatusColor(
+                  editForm.getFieldValue("isActive")
+                ),
+                borderColor: getStatusColor(editForm.getFieldValue("isActive")),
+              }}
+            />
           </Form.Item>
 
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 8,
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              width: "100%",
             }}
           >
-            <Button
+            <NeutralButton
               onClick={() => {
                 setEditModalVisible(false);
                 editForm.resetFields();
                 setSelectedRecord(null);
               }}
-              style={{
-                backgroundColor: "#3c2f3d",
-                color: "#ffffff",
-                borderColor: "#3c2f3d",
-              }}
             >
               Cancel
-            </Button>
-            <Button
+            </NeutralButton>
+            <AddNeutralButton
               type="primary"
               htmlType="submit"
               loading={submitting}
-              style={{ background: "#9dda52", color: "#3c2f3d" }}
             >
               Update Agent
-            </Button>
+            </AddNeutralButton>
           </div>
         </Form>
       </Drawer>
@@ -670,75 +726,85 @@ const DeliveryAgentList = () => {
           viewForm.resetFields();
           setSelectedRecord(null);
         }}
-        width={560}
+        width={600}
         destroyOnClose
         placement="right"
       >
-        <Form form={viewForm} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item style={{ textAlign: "center" }}>
+        <div
+          style={{
+            marginTop: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <Avatar
-              size={64}
+              size={72}
               src={
                 selectedRecord?.profilePicture?.uri ||
                 selectedRecord?.avatar ||
                 selectedRecord?.profilePicture
               }
               icon={<UserOutlined />}
+              style={{ backgroundColor: "#f2f2f2" }}
             />
-          </Form.Item>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="firstName" label="First Name">
-                <Input readOnly size="middle" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="lastName" label="Last Name">
-                <Input readOnly size="middle" />
-              </Form.Item>
-            </Col>
-          </Row>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#3c2f3d" }}>
+                {selectedRecord?.firstName || "Delivery Partner"}
+              </div>
+              <div style={{ color: "#555" }}>
+                {selectedRecord?.email || "N/A"}
+              </div>
+            </div>
+          </div>
 
-          <Form.Item name="email" label="Email">
-            <Input readOnly size="middle" />
-          </Form.Item>
-
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="mobNo" label="Mobile Number">
-                <Input readOnly size="middle" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="gender" label="Gender">
-                <Input readOnly size="middle" />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Descriptions bordered column={1} size="middle">
+            <Descriptions.Item label="First Name">
+              {selectedRecord?.firstName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Last Name">
+              {selectedRecord?.lastName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Email">
+              {selectedRecord?.email || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Mobile">
+              {selectedRecord?.mobNo || selectedRecord?.phone || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Date of Birth">
+              {selectedRecord?.dob
+                ? dayjs(selectedRecord?.dob).format("YYYY-MM-DD")
+                : "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Active Status">
+              <StatusTag
+                status={selectedRecord?.isActive ? "Active" : "Inactive"}
+                style={{
+                  backgroundColor: getStatusColor(selectedRecord?.isActive),
+                  borderColor: getStatusColor(selectedRecord?.isActive),
+                }}
+              />
+            </Descriptions.Item>
+          </Descriptions>
 
           <div
             style={{
               display: "flex",
               justifyContent: "flex-end",
-              marginTop: 8,
             }}
           >
-            <Button
+            <NeutralButton
               onClick={() => {
                 setViewModalVisible(false);
                 viewForm.resetFields();
                 setSelectedRecord(null);
               }}
-              style={{
-                backgroundColor: "#3c2f3d",
-                color: "#ffffff",
-                borderColor: "#3c2f3d",
-              }}
             >
               Close
-            </Button>
+            </NeutralButton>
           </div>
-        </Form>
+        </div>
       </Drawer>
     </div>
   );

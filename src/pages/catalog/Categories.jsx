@@ -32,6 +32,7 @@ import {
   QuestionCircleOutlined,
 } from "@ant-design/icons";
 import { categoriesAPI } from "../../services/api";
+import { NeutralButton } from "../../components/common/NeutralButton";
 import useDebounce from "../../hooks/useDebounce";
 
 const formatter = new Intl.NumberFormat("en-IN");
@@ -65,7 +66,7 @@ const Categories = () => {
   const hasInitialized = useRef(false);
   const [addChildModalVisible, setAddChildModalVisible] = useState(false);
   const [_removedChildren, setRemovedChildren] = useState([]);
-  const [newChildName, setNewChildName] = useState("");
+  const [newChildTags, setNewChildTags] = useState([]);
   const [selectedDeactivated, setSelectedDeactivated] = useState([]);
   const [originalChildren, setOriginalChildren] = useState([]);
 
@@ -269,7 +270,7 @@ const Categories = () => {
     setIconPreview(null);
     setRemovedChildren([]);
     setSelectedDeactivated([]);
-    setNewChildName("");
+    setNewChildTags([]);
     setOriginalChildren([]);
     setModalVisible(true);
   };
@@ -393,11 +394,20 @@ const Categories = () => {
   };
 
   // Handle adding children from modal
-  const handleAddChildren = (selectedChildren, newChildName) => {
+  const handleAddChildren = (selectedChildren, newChildValues) => {
     const currentChildren = form.getFieldValue("children") || [];
     const newChildrenSet = new Set(
       currentChildren.map((c) => String(c).trim().toLowerCase())
     );
+
+    const addChildIfNew = (displayName) => {
+      const clean = String(displayName || "").trim();
+      if (!clean) return;
+      const key = clean.toLowerCase();
+      if (newChildrenSet.has(key)) return;
+      newChildrenSet.add(key);
+      currentChildren.push(clean);
+    };
 
     // Add selected deactivated children (as display names)
     // selectedChildren contains slugs, we need to find the category and get its name
@@ -413,25 +423,22 @@ const Categories = () => {
       const displayName = childCategory
         ? childCategory.name || slugToDisplay(childCategory.slug)
         : slugToDisplay(childSlug);
-      const normalized = String(displayName).trim().toLowerCase();
-
-      if (!newChildrenSet.has(normalized)) {
-        newChildrenSet.add(normalized);
-        currentChildren.push(String(displayName).trim());
-      }
+      addChildIfNew(displayName);
     });
 
-    // Add new child name if provided (as display name)
-    if (newChildName && newChildName.trim()) {
-      const normalized = String(newChildName).trim().toLowerCase();
-      if (!newChildrenSet.has(normalized)) {
-        currentChildren.push(String(newChildName).trim());
-      }
-    }
+    // Add new child names (array from Select tags, or fallback to split string)
+    const names = Array.isArray(newChildValues)
+      ? newChildValues
+      : String(newChildValues || "")
+          .split(/[\s,]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+    names.forEach(addChildIfNew);
 
     form.setFieldsValue({ children: currentChildren });
     setAddChildModalVisible(false);
-    setNewChildName("");
+    setNewChildTags([]);
     setSelectedDeactivated([]);
 
     // Remove from removedChildren if it was there
@@ -936,6 +943,7 @@ const Categories = () => {
                 background: "#9dda52",
                 borderColor: "#9dda52",
                 color: "#3c2f3d",
+                border: "0.2px solid #3c2f3d",
               }}
             >
               Add Category
@@ -1023,7 +1031,7 @@ const Categories = () => {
           form.resetFields();
           setAddChildModalVisible(false);
           setSelectedDeactivated([]);
-          setNewChildName("");
+          setNewChildTags([]);
           setRemovedChildren([]);
           setOriginalChildren([]);
         }}
@@ -1127,9 +1135,7 @@ const Categories = () => {
 
                 {(iconPreview || icon) && (
                   <div style={{ marginTop: 8 }}>
-                    <Button
-                      type="link"
-                      danger
+                    <NeutralButton
                       icon={<DeleteOutlined />}
                       onClick={() => {
                         setIconFile(null);
@@ -1138,7 +1144,7 @@ const Categories = () => {
                       }}
                     >
                       Remove image
-                    </Button>
+                    </NeutralButton>
                   </div>
                 )}
               </div>
@@ -1176,6 +1182,7 @@ const Categories = () => {
                     background: "#9dda52",
                     borderColor: "#9dda52",
                     color: "#3c2f3d",
+                    border: "0.2px solid #3c2f3d",
                     display: "flex",
                     alignItems: "center",
                   }}
@@ -1251,7 +1258,14 @@ const Categories = () => {
               marginTop: 8,
             }}
           >
-            <Button onClick={() => setModalVisible(false)}>Cancel</Button>
+            <NeutralButton
+              onClick={() => {
+                setModalVisible(false);
+                form.resetFields();
+              }}
+            >
+              Cancel
+            </NeutralButton>
             <Button
               type="primary"
               onClick={() => form.submit()}
@@ -1259,9 +1273,10 @@ const Categories = () => {
                 background: "#9dda52",
                 borderColor: "#9dda52",
                 color: "#3c2f3d",
+                border: "0.2px solid #3c2f3d",
               }}
             >
-              Update Category
+              Save Category
             </Button>
           </div>
         </Form>
@@ -1332,10 +1347,10 @@ const Categories = () => {
       <Modal
         open={addChildModalVisible}
         onOk={() => {
-          if (selectedDeactivated.length > 0 || newChildName.trim()) {
-            handleAddChildren(selectedDeactivated, newChildName);
+          if (selectedDeactivated.length > 0 || newChildTags.length > 0) {
+            handleAddChildren(selectedDeactivated, newChildTags);
             setSelectedDeactivated([]);
-            setNewChildName("");
+            setNewChildTags([]);
           } else {
             message.warning(
               "Please select categories to restore or enter a new category name"
@@ -1344,7 +1359,7 @@ const Categories = () => {
         }}
         onCancel={() => {
           setAddChildModalVisible(false);
-          setNewChildName("");
+          setNewChildTags([]);
           setSelectedDeactivated([]);
         }}
         okText="Add"
@@ -1353,10 +1368,14 @@ const Categories = () => {
             background: "#9dda52",
             borderColor: "#9dda52",
             color: "#3c2f3d",
+            border: "0.2px solid #3c2f3d",
           },
         }}
-        style={{ color: "#3c2f3d" }}
+        style={{ color: "#f0f0f0" }}
         cancelText="Cancel"
+        cancelButtonProps={{
+          style: { color: "#f0f0f0", backgroundColor: "#3c2f3d" },
+        }}
         width={600}
         zIndex={1001}
       >
@@ -1417,17 +1436,15 @@ const Categories = () => {
             <div style={{ marginBottom: 8, fontWeight: 500 }}>
               Add New Child Category:
             </div>
-            <Input
-              placeholder="Enter new child category name"
-              value={newChildName}
-              onChange={(e) => setNewChildName(e.target.value)}
-              onPressEnter={() => {
-                if (newChildName.trim()) {
-                  handleAddChildren(selectedDeactivated, newChildName);
-                  setSelectedDeactivated([]);
-                  setNewChildName("");
-                }
-              }}
+            <Select
+              mode="tags"
+              value={newChildTags}
+              onChange={setNewChildTags}
+              tokenSeparators={[","]}
+              placeholder="Enter sub-category names"
+              style={{ width: "100%" }}
+              open={false}
+              allowClear
             />
           </div>
         </div>

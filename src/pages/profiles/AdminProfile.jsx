@@ -217,6 +217,7 @@ const AdminProfile = () => {
             style={{
               background: "#9dda52",
               color: "#3c2f3d",
+              border: "0.2px solid #3c2f3d",
             }}
             htmlType="submit"
             loading={saving}
@@ -263,6 +264,7 @@ const AdminProfile = () => {
             style={{
               background: "#9dda52",
               color: "#3c2f3d",
+              border: "0.2px solid #3c2f3d",
             }}
             htmlType="submit"
             loading={pwdSaving}
@@ -293,7 +295,11 @@ const AdminProfile = () => {
             <Button
               icon={<UploadOutlined />}
               loading={avatarSaving}
-              style={{ background: "#9dda52", color: "#3c2f3d" }}
+              style={{
+                background: "#9dda52",
+                color: "#3c2f3d",
+                border: "0.2px solid #3c2f3d",
+              }}
             >
               Upload New
             </Button>

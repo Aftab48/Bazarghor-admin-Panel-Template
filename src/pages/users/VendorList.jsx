@@ -12,6 +12,7 @@ import {
   Switch,
   Row,
   Col,
+  Descriptions,
 } from "antd";
 import {
   SearchOutlined,
@@ -24,8 +25,11 @@ import {
 } from "@ant-design/icons";
 import { vendorsAPI } from "../../services/api";
 import StatusTag from "../../components/common/StatusTag";
+import { NeutralButton } from "../../components/common/NeutralButton";
 import { useAuth } from "../../hooks/useAuth";
 import { ROLES } from "../../constants/permissions";
+
+const getStatusColor = (checked) => (checked ? "#9dda52" : "#ffbc2c ");
 
 const VendorList = () => {
   const [loading, setLoading] = useState(false);
@@ -43,6 +47,7 @@ const VendorList = () => {
   const [viewForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
   const { roles } = useAuth();
 
   // Check if user can add vendors (SUPER_ADMIN or ADMIN only)
@@ -186,6 +191,37 @@ const VendorList = () => {
     }
   };
 
+  const onToggleActive = async (record, nextStatus) => {
+    const vendorId = record._id || record.id || record.vendorId;
+    if (!vendorId) {
+      message.error("Vendor id missing; cannot update status");
+      return;
+    }
+
+    setTogglingId(vendorId);
+    try {
+      const formData = new FormData();
+      formData.append("isActive", nextStatus ? "true" : "false");
+      await vendorsAPI.update(vendorId, formData);
+
+      setVendors((prev) =>
+        prev.map((v) =>
+          (v._id || v.id || v.vendorId) === vendorId
+            ? { ...v, isActive: nextStatus }
+            : v
+        )
+      );
+
+      message.success(`Vendor marked as ${nextStatus ? "active" : "inactive"}`);
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to update status"
+      );
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const columns = [
     {
       title: "Vendor",
@@ -238,21 +274,27 @@ const VendorList = () => {
       key: "storeName",
       render: (text, record) => text || record.storeName || "N/A",
     },
+
     {
-      title: "Status",
-      dataIndex: "isActive",
-      key: "isActive",
-      render: (isActive) => {
-        if (isActive === undefined || isActive === null)
-          return <StatusTag status="unknown" />;
-        const status = isActive ? "Active" : "InActive";
-        return <StatusTag status={status} />;
+      title: "Active-Status",
+      key: "isActiveToggle",
+      render: (_, r) => {
+        const id = r?._id || r?.id || r?.vendorId;
+        const isActive = !!r?.isActive;
+        return (
+          <Switch
+            checked={isActive}
+            loading={togglingId === id}
+            onChange={(checked) => onToggleActive(r, checked)}
+            checkedChildren="Active"
+            unCheckedChildren="InActive"
+            style={{
+              backgroundColor: getStatusColor(isActive),
+              borderColor: getStatusColor(isActive),
+            }}
+          />
+        );
       },
-      filters: [
-        { text: "Active", value: true },
-        { text: "InActive", value: false },
-      ],
-      onFilter: (value, record) => record.isActive === value,
     },
     {
       title: "Total Sales",
@@ -414,6 +456,7 @@ const VendorList = () => {
                   color: "#3c2f3d",
                   width: "100%",
                   maxWidth: 180,
+                  border: "0.2px solid #3c2f3d",
                 }}
               >
                 Add Vendor
@@ -565,7 +608,14 @@ const VendorList = () => {
             valuePropName="checked"
             initialValue={false}
           >
-            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+            <Switch
+              checkedChildren="Active"
+              unCheckedChildren="Inactive"
+              style={{
+                backgroundColor: getStatusColor(form.getFieldValue("isActive")),
+                borderColor: getStatusColor(form.getFieldValue("isActive")),
+              }}
+            />
           </Form.Item>
 
           <Form.Item
@@ -581,6 +631,14 @@ const VendorList = () => {
 
           <Form.Item style={{ marginBottom: 0, marginTop: "24px" }}>
             <Space>
+              <NeutralButton
+                onClick={() => {
+                  setAddModalVisible(false);
+                  form.resetFields();
+                }}
+              >
+                Cancel
+              </NeutralButton>
               <Button
                 type="primary"
                 htmlType="submit"
@@ -589,23 +647,10 @@ const VendorList = () => {
                   background: "#9dda52",
                   borderColor: "#9dda52",
                   color: "#3c2f3d",
-                  fontWeight: "bold",
+                  border: "0.2px solid #3c2f3d",
                 }}
               >
                 Create Vendor
-              </Button>
-              <Button
-                onClick={() => {
-                  setAddModalVisible(false);
-                  form.resetFields();
-                }}
-                style={{
-                  backgroundColor: "#3c2f3d",
-                  color: "#ffffff",
-                  borderColor: "#3c2f3d",
-                }}
-              >
-                Cancel
               </Button>
             </Space>
           </Form.Item>
@@ -614,94 +659,96 @@ const VendorList = () => {
 
       {/* View Modal */}
       <Drawer
-        title="View Vendor Details"
+        title="Vendor Details"
         open={viewModalVisible}
         onClose={() => {
           setViewModalVisible(false);
           viewForm.resetFields();
           setSelectedRecord(null);
         }}
-        width={700}
+        width={720}
         placement="right"
         style={{ maxWidth: "95vw" }}
         bodyStyle={{ paddingBottom: 80 }}
       >
-        <Form form={viewForm} layout="vertical" style={{ marginTop: "24px" }}>
-          <Form.Item style={{ textAlign: "center" }}>
+        <div
+          style={{
+            marginTop: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <Avatar
-              size={64}
+              size={72}
               src={selectedRecord?.profilePicture?.uri}
               icon={<UserOutlined />}
+              style={{ backgroundColor: "#f2f2f2" }}
             />
-          </Form.Item>
-          <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="firstName" label="First Name">
-                <Input readOnly size="large" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="lastName" label="Last Name">
-                <Input readOnly size="large" />
-              </Form.Item>
-            </Col>
-          </Row>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#3c2f3d" }}>
+                {selectedRecord?.storeName ||
+                  selectedRecord?.firstName ||
+                  "Vendor"}
+              </div>
+              <div style={{ color: "#555" }}>
+                {selectedRecord?.email || "N/A"}
+              </div>
+              <div
+                style={{ display: "flex", gap: 8, alignItems: "center" }}
+              ></div>
+            </div>
+          </div>
 
-          <Form.Item name="email" label="Email">
-            <Input readOnly size="large" />
-          </Form.Item>
+          <Descriptions bordered column={1} size="middle">
+            <Descriptions.Item label="First Name">
+              {selectedRecord?.firstName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Last Name">
+              {selectedRecord?.lastName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Email">
+              {selectedRecord?.email || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Mobile">
+              {selectedRecord?.mobNo || selectedRecord?.phone || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Store Name">
+              {selectedRecord?.storeName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="City">
+              {selectedRecord?.cityNm || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Pin Code">
+              {selectedRecord?.pinCode || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Store Address">
+              {selectedRecord?.storeAddress || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Active Status">
+              <StatusTag
+                status={selectedRecord?.isActive ? "Active" : "Inactive"}
+                style={{
+                  backgroundColor: getStatusColor(selectedRecord?.isActive),
+                  borderColor: getStatusColor(selectedRecord?.isActive),
+                }}
+              />
+            </Descriptions.Item>
+          </Descriptions>
 
-          <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="mobNo" label="Mobile Number">
-                <Input readOnly size="large" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="gender" label="Gender">
-                <Input readOnly size="large" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="storeName" label="Store Name">
-            <Input readOnly size="large" />
-          </Form.Item>
-
-          <Form.Item name="storeAddress" label="Store Address">
-            <Input.TextArea readOnly rows={3} size="large" />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="cityNm" label="City Name">
-                <Input readOnly size="large" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="pinCode" label="Pin Code">
-                <Input readOnly size="large" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <div style={{ marginTop: 12, textAlign: "right" }}>
-            <Button
+          <div style={{ textAlign: "right" }}>
+            <NeutralButton
               onClick={() => {
                 setViewModalVisible(false);
                 viewForm.resetFields();
                 setSelectedRecord(null);
               }}
-              style={{
-                color: "#ffffff",
-                backgroundColor: "#3c2f3d",
-                borderColor: "#3c2f3d",
-              }}
             >
               Close
-            </Button>
+            </NeutralButton>
           </div>
-        </Form>
+        </div>
       </Drawer>
 
       {/* Edit Modal */}
@@ -802,14 +849,20 @@ const VendorList = () => {
               </Form.Item>
             </Col>
           </Row>
-
           <Form.Item
             name="isActive"
             label="Active Status"
             valuePropName="checked"
             initialValue={false}
           >
-            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+            <Switch
+              checkedChildren="Active"
+              unCheckedChildren="InActive"
+              style={{
+                backgroundColor: getStatusColor(form.getFieldValue("isActive")),
+                borderColor: getStatusColor(form.getFieldValue("isActive")),
+              }}
+            />
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0, marginTop: "24px" }}>
@@ -843,6 +896,7 @@ const VendorList = () => {
                 style={{
                   background: "#9dda52",
                   color: "#3c2f3d",
+                  border: "0.2px solid #3c2f3d",
                 }}
               >
                 Update Vendor

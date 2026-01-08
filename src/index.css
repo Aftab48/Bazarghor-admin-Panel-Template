@@ -92,3 +92,9 @@ li,
   .ant-btn:focus-visible) {
   border-color: inherit !important;
 }
+
+/* Ensure all green brand buttons share the thin dark border */
+button[style*="#9dda52"],
+:where(.ant-btn)[style*="#9dda52"] {
+  border: 0.2px solid #3c2f3d !important;
+}

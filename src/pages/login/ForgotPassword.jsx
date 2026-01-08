@@ -129,7 +129,11 @@ const ForgotPassword = () => {
               <Input placeholder="admin@example.com" autoComplete="email" />
             </Form.Item>
             <Button
-              style={{ background: "#9dda52", color: "#3c2f3d" }}
+              style={{
+                background: "#9dda52",
+                color: "#3c2f3d",
+                border: "0.2px solid #3c2f3d",
+              }}
               htmlType="submit"
               block
               loading={loading}
@@ -165,7 +169,11 @@ const ForgotPassword = () => {
               />
             </Form.Item>
             <Button
-              style={{ background: "#9dda52", color: "#3c2f3d" }}
+              style={{
+                background: "#9dda52",
+                color: "#3c2f3d",
+                border: "0.2px solid #3c2f3d",
+              }}
               htmlType="submit"
               block
               loading={loading}

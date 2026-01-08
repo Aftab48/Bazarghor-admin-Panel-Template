@@ -789,6 +789,7 @@ const OrderManagement = () => {
                 background: "#9dda52",
                 borderColor: "#9dda52",
                 color: "#3c2f3d",
+                border: "0.2px solid #3c2f3d",
               }}
             >
               Export Orders
@@ -879,6 +880,7 @@ const OrderManagement = () => {
             backgroundColor: "#9dda52",
             borderColor: "#9dda52",
             color: "#3c2f3d",
+            border: "0.2px solid #3c2f3d",
           },
         }}
       >
@@ -1045,6 +1047,7 @@ const OrderManagement = () => {
                 background: "#9dda52",
                 borderColor: "#9dda52",
                 color: "#3c2f3d",
+                border: "0.2px solid #3c2f3d",
               }}
             >
               Update Order

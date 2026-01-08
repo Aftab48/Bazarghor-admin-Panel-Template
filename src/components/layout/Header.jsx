@@ -225,15 +225,15 @@ const Header = ({ onToggleSidebar, collapsed, isMobile }) => {
                       return (
                         <Tag
                           key={roleCode || index}
-                          color="processing"
+                          color="#9dda52"
                           style={{
-                            fontSize: "11px",
-                            fontWeight: 500,
+                            fontSize: "12px",
                             margin: 0,
                             padding: "2px 8px",
                             borderRadius: "4px",
-                            border: "none",
+                            border: "0.2px solid #3c2f3d",
                             lineHeight: "1.4",
+                            color: "#3c2f3d",
                           }}
                         >
                           {roleDisplayName}
