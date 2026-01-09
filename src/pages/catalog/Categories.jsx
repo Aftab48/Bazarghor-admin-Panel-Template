@@ -1253,7 +1253,7 @@ const Categories = () => {
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
+              justifyContent: "space-between",
               gap: 8,
               marginTop: 8,
             }}
