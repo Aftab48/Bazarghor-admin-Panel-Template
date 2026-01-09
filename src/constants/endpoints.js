@@ -1,5 +1,5 @@
 // API Endpoints Configuration
-export const API_BASE_URL = "https://www.bazarghorr.in/api";
+export const API_BASE_URL = "https://api.bazarghorr.in/api";
 
 export const ENDPOINTS = {
   // Auth
