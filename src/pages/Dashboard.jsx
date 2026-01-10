@@ -25,6 +25,12 @@ import { dashboardAPI } from "../services/api";
 
 const { Title, Text } = Typography;
 
+const currencyFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({});
@@ -92,17 +98,20 @@ const Dashboard = () => {
       title: "Order #",
       dataIndex: "orderNumber",
       key: "orderNumber",
+      width: 120,
     },
     {
       title: "Customer",
       dataIndex: "customerName",
       key: "customerName",
+      ellipsis: true,
     },
     {
       title: "Total",
       dataIndex: "total",
       key: "total",
-      render: (total) => `$${total}`,
+      width: 120,
+      render: (total) => currencyFormatter.format(total ?? 0),
     },
     {
       title: "Status",
@@ -114,6 +123,7 @@ const Dashboard = () => {
       title: "Date",
       dataIndex: "createdAt",
       key: "createdAt",
+      width: 140,
       render: (date) => new Date(date).toLocaleDateString(),
     },
   ];
@@ -253,8 +263,12 @@ const Dashboard = () => {
         <Table
           columns={orderColumns}
           dataSource={recentOrders}
-          rowKey="id"
-          pagination={false}
+          rowKey={(record) =>
+            record?.orderNumber || record?.id || record?._id || record?.key
+          }
+          size="middle"
+          scroll={{ x: 720 }}
+          pagination={{ pageSize: 8, showSizeChanger: false }}
         />
       </Card>
     </div>

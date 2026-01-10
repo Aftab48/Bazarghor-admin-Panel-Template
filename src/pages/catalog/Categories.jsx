@@ -864,6 +864,8 @@ const Categories = () => {
           rowKey={(record) => record?.id || record?._id || record?.slug}
           loading={loading}
           childrenColumnName="__children"
+          size="middle"
+          scroll={{ x: 960 }}
           pagination={getPaginationConfig("categories")}
         />
       ),
@@ -885,6 +887,8 @@ const Categories = () => {
           rowKey={(record) => record?.id || record?._id || record?.slug}
           loading={loading}
           childrenColumnName="__children"
+          size="middle"
+          scroll={{ x: 960 }}
           pagination={getPaginationConfig("sub-categories")}
         />
       ),
