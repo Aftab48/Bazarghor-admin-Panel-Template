@@ -384,7 +384,7 @@ const CustomerList = () => {
         >
           <h1
             style={{
-              fontSize: "24px",
+              fontSize: "26px",
               fontWeight: "bold",
               color: "#3c2f3d",
               margin: 0,
@@ -724,10 +724,7 @@ const CustomerList = () => {
             >
               Cancel
             </NeutralButton>
-            <AddNeutralButton
-              htmlType="submit"
-              loading={submitting}
-            >
+            <AddNeutralButton htmlType="submit" loading={submitting}>
               Create Customer
             </AddNeutralButton>
           </div>

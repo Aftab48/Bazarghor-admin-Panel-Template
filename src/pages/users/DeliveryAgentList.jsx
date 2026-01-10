@@ -386,7 +386,7 @@ const DeliveryAgentList = () => {
         >
           <h1
             style={{
-              fontSize: "24px",
+              fontSize: "26px",
               fontWeight: "bold",
               color: "#3c2f3d",
               margin: 0,
