@@ -227,8 +227,8 @@ const DeliveryAgentManagement = () => {
         const agentId = record.id || record._id;
         return (
           <Switch
-            checkedChildren="APPROVED"
-            unCheckedChildren="REJECTED"
+            checkedChildren="Approved"
+            unCheckedChildren="Rejected"
             checked={statusCode === STATUS_CODES.APPROVED}
             loading={statusUpdatingId === agentId}
             style={{
