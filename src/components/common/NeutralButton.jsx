@@ -11,6 +11,7 @@ const add = {
   borderColor: "#9dda52",
   color: "#3c2f3d",
   border: "0.2px solid #3c2f3d",
+  whiteSpace: "nowrap",
 };
 const NeutralButton = ({ children = "Cancel", style, ...rest }) => {
   return (
@@ -20,9 +21,9 @@ const NeutralButton = ({ children = "Cancel", style, ...rest }) => {
   );
 };
 
-const AddNeutralButton = ({ children = "Add", add, ...rest }) => {
+const AddNeutralButton = ({ children = "Add", style, ...rest }) => {
   return (
-    <Button style={{ ...add, ...add }} {...rest}>
+    <Button style={{ ...add, ...style }} {...rest}>
       {children}
     </Button>
   );

@@ -25,7 +25,10 @@ import {
 } from "@ant-design/icons";
 import { vendorsAPI } from "../../services/api";
 import StatusTag from "../../components/common/StatusTag";
-import { NeutralButton } from "../../components/common/NeutralButton";
+import {
+  NeutralButton,
+  AddNeutralButton,
+} from "../../components/common/NeutralButton";
 import { useAuth } from "../../hooks/useAuth";
 import { ROLES } from "../../constants/permissions";
 
@@ -447,20 +450,12 @@ const VendorList = () => {
               size="large"
             />
             {canAddVendor() && (
-              <Button
-                type="primary"
+              <AddNeutralButton
                 icon={<PlusOutlined />}
                 onClick={() => setAddModalVisible(true)}
-                style={{
-                  background: "#9dda52",
-                  color: "#3c2f3d",
-                  width: "100%",
-                  maxWidth: 180,
-                  border: "0.2px solid #3c2f3d",
-                }}
               >
                 Add Vendor
-              </Button>
+              </AddNeutralButton>
             )}
           </div>
         </div>
@@ -630,7 +625,15 @@ const VendorList = () => {
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0, marginTop: "24px" }}>
-            <Space>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                width: "100%",
+              }}
+            >
               <NeutralButton
                 onClick={() => {
                   setAddModalVisible(false);
@@ -639,20 +642,10 @@ const VendorList = () => {
               >
                 Cancel
               </NeutralButton>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={submitting}
-                style={{
-                  background: "#9dda52",
-                  borderColor: "#9dda52",
-                  color: "#3c2f3d",
-                  border: "0.2px solid #3c2f3d",
-                }}
-              >
+              <AddNeutralButton htmlType="submit" loading={submitting}>
                 Create Vendor
-              </Button>
-            </Space>
+              </AddNeutralButton>
+            </div>
           </Form.Item>
         </Form>
       </Drawer>
@@ -875,7 +868,7 @@ const VendorList = () => {
                 width: "100%",
               }}
             >
-              <Button
+              <NeutralButton
                 onClick={() => {
                   setEditModalVisible(false);
                   form.resetFields();
@@ -888,19 +881,10 @@ const VendorList = () => {
                 }}
               >
                 Cancel
-              </Button>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={submitting}
-                style={{
-                  background: "#9dda52",
-                  color: "#3c2f3d",
-                  border: "0.2px solid #3c2f3d",
-                }}
-              >
+              </NeutralButton>
+              <AddNeutralButton htmlType="submit" loading={submitting}>
                 Update Vendor
-              </Button>
+              </AddNeutralButton>
             </div>
           </Form.Item>
         </Form>

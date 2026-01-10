@@ -32,7 +32,10 @@ import {
   QuestionCircleOutlined,
 } from "@ant-design/icons";
 import { categoriesAPI } from "../../services/api";
-import { NeutralButton } from "../../components/common/NeutralButton";
+import {
+  NeutralButton,
+  AddNeutralButton,
+} from "../../components/common/NeutralButton";
 import useDebounce from "../../hooks/useDebounce";
 
 const formatter = new Intl.NumberFormat("en-IN");
@@ -906,13 +909,11 @@ const Categories = () => {
         }}
       >
         <div
+          className="flex justify-between items-start mb-6"
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            flexWrap: "wrap",
             gap: 12,
             rowGap: 12,
-            flexWrap: "wrap",
           }}
         >
           <h1
@@ -925,34 +926,6 @@ const Categories = () => {
           >
             Categories
           </h1>
-          <Space
-            className="flex flex-wrap gap-3"
-            size="middle"
-            style={{ justifyContent: "flex-end", flex: 1, minWidth: 220 }}
-          >
-            <Input
-              allowClear
-              placeholder="Search categories..."
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: "100%", maxWidth: 340, flex: 1, minWidth: 200 }}
-              size="large"
-            />
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAdd}
-              style={{
-                background: "#9dda52",
-                borderColor: "#9dda52",
-                color: "#3c2f3d",
-                border: "0.2px solid #3c2f3d",
-              }}
-            >
-              Add Category
-            </Button>
-          </Space>
         </div>
         <div
           style={{
@@ -1008,7 +981,46 @@ const Categories = () => {
           ))}
         </div>
       </div>
-
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
+        }}
+      >
+        <div
+          className="flex items-center justify-between gap-3 w-full flex-wrap"
+          style={{
+            rowGap: 12,
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              minWidth: 200,
+            }}
+          >
+            <Input
+              placeholder="Search categories..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              size="large"
+              allowClear
+              style={{
+                width: "100%",
+                maxWidth: 420,
+              }}
+            />
+          </div>
+          <div>
+            <AddNeutralButton icon={<PlusOutlined />} onClick={handleAdd}>
+              Add Category
+            </AddNeutralButton>
+          </div>
+        </div>
+      </div>
       <div
         style={{
           background: "#ffffff",
@@ -1178,21 +1190,13 @@ const Categories = () => {
                 </Tooltip>
               </Space>
               {!editingCategory?.parentId && (
-                <Button
+                <AddNeutralButton
                   type="primary"
                   icon={<PlusOutlined />}
                   onClick={() => setAddChildModalVisible(true)}
-                  style={{
-                    background: "#9dda52",
-                    borderColor: "#9dda52",
-                    color: "#3c2f3d",
-                    border: "0.2px solid #3c2f3d",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
                 >
                   Add New Children
-                </Button>
+                </AddNeutralButton>
               )}
             </div>
           </div>
@@ -1270,18 +1274,9 @@ const Categories = () => {
             >
               Cancel
             </NeutralButton>
-            <Button
-              type="primary"
-              onClick={() => form.submit()}
-              style={{
-                background: "#9dda52",
-                borderColor: "#9dda52",
-                color: "#3c2f3d",
-                border: "0.2px solid #3c2f3d",
-              }}
-            >
+            <AddNeutralButton onClick={() => form.submit()}>
               Save Category
-            </Button>
+            </AddNeutralButton>
           </div>
         </Form>
       </Drawer>

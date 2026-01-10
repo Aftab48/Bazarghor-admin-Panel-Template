@@ -16,7 +16,10 @@ import {
   Row,
   Col,
 } from "antd";
-import { NeutralButton } from "../../components/common/NeutralButton";
+import {
+  NeutralButton,
+  AddNeutralButton,
+} from "../../components/common/NeutralButton";
 
 const { TextArea } = Input;
 import {
@@ -828,13 +831,11 @@ const Products = () => {
         }}
       >
         <div
+          className="flex justify-between items-start mb-6"
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            flexWrap: "wrap",
             gap: 12,
             rowGap: 12,
-            flexWrap: "wrap",
           }}
         >
           <h1
@@ -847,33 +848,6 @@ const Products = () => {
           >
             Products
           </h1>
-          <Space
-            className="flex flex-wrap gap-3"
-            size="middle"
-            style={{ justifyContent: "flex-end", flex: 1, minWidth: 220 }}
-          >
-            <Input
-              allowClear
-              placeholder="Search products..."
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: "100%", maxWidth: 360, flex: 1, minWidth: 200 }}
-              size="large"
-            />
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAdd}
-              style={{
-                background: "#9dda52",
-                borderColor: "#9dda52",
-                color: "#3c2f3d",
-              }}
-            >
-              Add Product
-            </Button>
-          </Space>
         </div>
         <div
           style={{
@@ -929,7 +903,46 @@ const Products = () => {
           ))}
         </div>
       </div>
-
+      <div
+        style={{
+          background: "#ffffff",
+          padding: "clamp(16px, 2vw, 24px)",
+          borderRadius: "8px",
+          boxShadow: "0 0 14px rgba(0,0,0,0.09)",
+        }}
+      >
+        <div
+          className="flex items-center justify-between gap-3 w-full flex-wrap"
+          style={{
+            rowGap: 12,
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              minWidth: 200,
+            }}
+          >
+            <Input
+              placeholder="Search categories..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              size="large"
+              allowClear
+              style={{
+                width: "100%",
+                maxWidth: 420,
+              }}
+            />
+          </div>
+          <div>
+            <AddNeutralButton icon={<PlusOutlined />} onClick={handleAdd}>
+              Add Product
+            </AddNeutralButton>
+          </div>
+        </div>
+      </div>
       <div
         style={{
           background: "#ffffff",

@@ -413,20 +413,12 @@ const DeliveryAgentList = () => {
               size="large"
             />
             {canAddAgent() && (
-              <Button
-                type="primary"
+              <AddNeutralButton
                 icon={<PlusOutlined />}
                 onClick={() => setAddModalVisible(true)}
-                style={{
-                  background: "#9dda52",
-                  color: "#3c2f3d",
-                  width: "100%",
-                  maxWidth: 180,
-                  border: "0.2px solid #3c2f3d",
-                }}
               >
                 Add Agent
-              </Button>
+              </AddNeutralButton>
             )}
           </div>
         </div>
@@ -567,11 +559,7 @@ const DeliveryAgentList = () => {
             >
               Cancel
             </NeutralButton>
-            <AddNeutralButton
-              type="primary"
-              htmlType="submit"
-              loading={submitting}
-            >
+            <AddNeutralButton htmlType="submit" loading={submitting}>
               Create Delivery Agent
             </AddNeutralButton>
           </div>
@@ -706,11 +694,7 @@ const DeliveryAgentList = () => {
             >
               Cancel
             </NeutralButton>
-            <AddNeutralButton
-              type="primary"
-              htmlType="submit"
-              loading={submitting}
-            >
+            <AddNeutralButton htmlType="submit" loading={submitting}>
               Update Agent
             </AddNeutralButton>
           </div>

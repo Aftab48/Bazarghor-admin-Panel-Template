@@ -411,20 +411,12 @@ const CustomerList = () => {
               size="large"
             />
             {canAddCustomer() && (
-              <Button
-                type="primary"
+              <AddNeutralButton
                 icon={<PlusOutlined />}
                 onClick={() => setAddModalVisible(true)}
-                style={{
-                  background: "#9dda52",
-                  color: "#3c2f3d",
-                  width: "100%",
-                  maxWidth: 180,
-                  border: "0.2px solid #3c2f3d",
-                }}
               >
                 Add Customer
-              </Button>
+              </AddNeutralButton>
             )}
           </div>
         </div>
@@ -640,18 +632,9 @@ const CustomerList = () => {
             >
               Cancel
             </NeutralButton>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={submitting}
-              style={{
-                background: "#9dda52",
-                color: "#3c2f3d",
-                border: "0.2px solid #3c2f3d",
-              }}
-            >
+            <AddNeutralButton htmlType="submit" loading={submitting}>
               Update Customer
-            </Button>
+            </AddNeutralButton>
           </div>
         </Form>
       </Drawer>
@@ -741,14 +724,12 @@ const CustomerList = () => {
             >
               Cancel
             </NeutralButton>
-            <Button
-              type="primary"
+            <AddNeutralButton
               htmlType="submit"
               loading={submitting}
-              style={{ background: "#9dda52", color: "#3c2f3d" }}
             >
               Create Customer
-            </Button>
+            </AddNeutralButton>
           </div>
         </Form>
       </Drawer>

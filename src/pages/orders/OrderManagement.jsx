@@ -749,13 +749,11 @@ const OrderManagement = () => {
         }}
       >
         <div
+          className="flex justify-between items-start mb-6"
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            flexWrap: "wrap",
             gap: 12,
             rowGap: 12,
-            flexWrap: "wrap",
           }}
         >
           <h1
@@ -769,32 +767,38 @@ const OrderManagement = () => {
             Order Management
           </h1>
 
-          <Space
-            className="flex flex-wrap gap-3"
-            size="middle"
-            style={{ justifyContent: "flex-end", flex: 1, minWidth: 220 }}
+          <div
+            className="flex items-center gap-3"
+            style={{
+              flexWrap: "wrap",
+              gap: 12,
+              justifyContent: "flex-end",
+              flex: 1,
+              minWidth: 260,
+            }}
           >
             <Input
-              allowClear
-              placeholder="Search products..."
+              placeholder="Search orders..."
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: "100%", maxWidth: 360, flex: 1, minWidth: 200 }}
+              style={{ width: "100%", minWidth: 220, flex: 1, maxWidth: 360 }}
               size="large"
+              allowClear
             />
             <Button
               icon={<ExportOutlined />}
               style={{
                 background: "#9dda52",
-                borderColor: "#9dda52",
                 color: "#3c2f3d",
+                width: "100%",
+                maxWidth: 180,
                 border: "0.2px solid #3c2f3d",
               }}
             >
               Export Orders
             </Button>
-          </Space>
+          </div>
         </div>
 
         <div
