@@ -168,43 +168,28 @@ const RolesPermissions = () => {
           boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
+        <Row gutter={[12, 12]} align="middle">
+          <Col xs={24} md={14} lg={16}>
             <h1 level={3} style={{ margin: 0, fontSize: 28, color: "#3c2f3d" }}>
               Roles & Permissions
             </h1>
             <p type="secondary" style={{ display: "block", marginTop: 6 }}>
               Create and manage roles and their permissions
             </p>
-          </div>
+          </Col>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-              minWidth: 220,
-            }}
-          >
+          <Col xs={24} md={10} lg={8}>
             <Input
               placeholder="Search roles..."
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 320 }}
+              style={{ width: "100%" }}
               size="large"
               allowClear
             />
-          </div>
-        </div>
+          </Col>
+        </Row>
       </div>
 
       <div
@@ -298,22 +283,24 @@ const RolesPermissions = () => {
                     bordered={false}
                     style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
+                    <Row
+                      gutter={[12, 12]}
+                      align="middle"
+                      justify="space-between"
                     >
-                      <div>
+                      <Col xs={24} md={16}>
                         <Title level={5} style={{ margin: 0 }}>
                           {activeRole.name}
                         </Title>
                         <Text type="secondary">
                           {(activeRole.permissions || []).length} assigned
                         </Text>
-                      </div>
-                      <div>
+                      </Col>
+                      <Col
+                        xs={24}
+                        md={8}
+                        style={{ display: "flex", justifyContent: "flex-end" }}
+                      >
                         <Button
                           type="primary"
                           onClick={() => handleUpdatePermissions(activeRole)}
@@ -323,14 +310,14 @@ const RolesPermissions = () => {
                             background: hasChange ? "#9dda52" : "transparent",
                             borderRadius: 8,
                             padding: "10px 12px",
-                            marginBottom: 8,
-                            width: 100,
+                            width: "100%",
+                            maxWidth: 160,
                           }}
                         >
                           Save
                         </Button>
-                      </div>
-                    </div>
+                      </Col>
+                    </Row>
 
                     <div style={{ marginTop: 16 }}>
                       <Checkbox.Group
@@ -342,20 +329,20 @@ const RolesPermissions = () => {
                           }))
                         }
                       >
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns:
-                              "repeat(4, minmax(100px, 1fr))",
-                            gap: 12,
-                          }}
-                        >
+                        <Row gutter={[12, 12]}>
                           {allPermissions.map((perm) => {
                             const isChecked = (selected || []).includes(
                               perm.key
                             );
                             return (
-                              <div key={perm.key}>
+                              <Col
+                                key={perm.key}
+                                xs={24}
+                                sm={12}
+                                md={12}
+                                lg={8}
+                                xl={6}
+                              >
                                 <Checkbox
                                   value={perm.key}
                                   style={{
@@ -371,10 +358,10 @@ const RolesPermissions = () => {
                                     {perm.label}
                                   </span>
                                 </Checkbox>
-                              </div>
+                              </Col>
                             );
                           })}
-                        </div>
+                        </Row>
                       </Checkbox.Group>
                     </div>
 
