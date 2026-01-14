@@ -35,14 +35,10 @@ const VENDOR_STATUS = {
 const extractSubscriptionPlan = (entity) => {
   if (!entity) return "N/A";
   if (Array.isArray(entity.subscriptions) && entity.subscriptions.length > 0) {
-    return entity.subscriptions[0]?.subscriptionPlan || "N/A";
+    const first = entity.subscriptions[0];
+    return first?.subscriptionPlan || "N/A";
   }
-  return (
-    entity.subscriptionPlan?.name ||
-    entity.subscriptionPlan ||
-    entity.planName ||
-    "N/A"
-  );
+  return entity.subscriptionPlan || "N/A";
 };
 
 const normalizeStatusCode = (status) => {
@@ -121,6 +117,11 @@ const VendorManagement = () => {
               categoryName:
                 v.category?.name || v.categoryName || v.category || "N/A",
               subscriptionPlan: extractSubscriptionPlan(v),
+              isApproved:
+                v.isApproved ??
+                v.isAprroved ??
+                v.approved ??
+                normalizeStatusCode(v.status) === VENDOR_STATUS.APPROVED,
             };
           })
         : [];
@@ -216,15 +217,17 @@ const VendorManagement = () => {
         ? {
             ...store,
             storeOpen: store.isStoreOpen,
-            categoryName: store.category
-              ? subscriptions
-              : store.subscriptionPlan?.name ||
-                store.subscriptionPlan ||
-                store.planName ||
-                "N/A",
+            categoryName: store.category || "N/A",
+            subscriptionPlan: extractSubscriptionPlan(store),
+            isApproved:
+              store.isApproved ??
+              store.isAprroved ??
+              store.approved ??
+              normalizeStatusCode(store.status) === VENDOR_STATUS.APPROVED,
             productsCount: Array.isArray(store.products)
               ? store.products.length
               : store.productsCount,
+            vendor: store.vendor || record.vendor || {},
           }
         : record;
       setSelectedStore(normalizedStore || record);
@@ -717,17 +720,10 @@ const VendorManagement = () => {
                 />
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 16 }}>
-                    {selectedStore.storeName ||
-                      selectedStore.businessName ||
-                      "N/A"}
+                    {selectedStore.storeName || "N/A"}
                   </div>
                   <div style={{ color: "#666" }}>
-                    Owner:{" "}
-                    {selectedStore.ownerName ||
-                      `${selectedStore.firstName || ""} ${
-                        selectedStore.lastName || ""
-                      }`.trim() ||
-                      "N/A"}
+                    Owner: {selectedStore.vendor.name || "N/A"}
                   </div>
                 </div>
               </div>
@@ -745,10 +741,6 @@ const VendorManagement = () => {
                   {selectedStore.storeCode || "N/A"}
                 </div>
                 <div>
-                  <strong>Status:</strong>{" "}
-                  <StatusTag status={selectedStore.status} />
-                </div>
-                <div>
                   <strong>Store Open:</strong>{" "}
                   {selectedStore.storeOpen ? "Open" : "Closed"}
                 </div>
@@ -758,22 +750,20 @@ const VendorManagement = () => {
                 </div>
                 <div>
                   <strong>Subscription Plan:</strong>{" "}
-                  {selectedStore.subscriptionPlan || "N/A"}
+                  {selectedStore.subscriptionPlan ||
+                    extractSubscriptionPlan(selectedStore)}
                 </div>
                 <div>
-                  <strong>Contact:</strong>{" "}
-                  {selectedStore.email ||
-                    selectedStore.contactNumber ||
-                    selectedStore.phone ||
-                    selectedStore.mobNo ||
-                    "N/A"}
+                  <strong>Approval:</strong>{" "}
+                  <StatusTag
+                    status={selectedStore.isApproved ? "approved" : "pending"}
+                  />
                 </div>
                 <div>
-                  <strong>Phone:</strong>{" "}
-                  {selectedStore.contactNumber ||
-                    selectedStore.phone ||
-                    selectedStore.mobNo ||
-                    "N/A"}
+                  <strong>Email:</strong> {selectedStore.vendor?.email || "N/A"}
+                </div>
+                <div>
+                  <strong>Phone:</strong> {selectedStore.vendor?.mobNo || "N/A"}
                 </div>
                 <div>
                   <strong>Products:</strong>{" "}
