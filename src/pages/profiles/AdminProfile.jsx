@@ -107,7 +107,7 @@ const AdminProfile = () => {
     setPwdSaving(true);
     try {
       const body = {
-        currentPassword: values.currentPassword,
+        oldPassword: values.currentPassword,
         newPassword: values.newPassword,
       };
 
