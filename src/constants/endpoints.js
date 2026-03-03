@@ -1,5 +1,5 @@
 // API Endpoints Configuration
-export const API_BASE_URL = "https://api.bazarghorr.in/api";
+export const API_BASE_URL = "http://localhost:5000/api";
 
 export const ENDPOINTS = {
   // Auth
@@ -10,6 +10,8 @@ export const ENDPOINTS = {
   SUPER_ADMIN_CHANGE_PASSWORD: (id) => `/admin/change-password/${id}`,
   SUPER_ADMIN_FORGET_PASSWORD: "/admin/forget-password",
   SUPER_ADMIN_RESET_PASSWORD: "/admin/reset-password",
+  AUTH_REFRESH_TOKEN: "/auth/refresh",
+  SUPER_ADMIN_REFRESH_TOKEN: "/auth/refresh",
   ADMIN_PERMISSIONS: "/admin/permissions",
   DASHBOARD_STATS: "admin/dashboard/overview",
   DASHBOARD_SERIES: "admin/dashboard/series",
@@ -75,6 +77,13 @@ export const ENDPOINTS = {
   STORE_ADMIN_GET_BY_ID: (id) => `/store/admin/get-store-by-id/${id}`,
   STORE_ADMIN_UPDATE: (id) => `/store/admin/update-store-by-id/${id}`,
   STORE_TOGGLE_STATUS: (storeId) => `/store/${storeId}/open-close`,
+
+  // Store Categories - Admin
+  STORE_ADMIN_CREATE_CATEGORY: "/store/admin/categories",
+  STORE_ADMIN_GET_CATEGORIES: "/store/admin/categories",
+  STORE_ADMIN_GET_CATEGORY_BY_ID: (id) => `/store/admin/category/${id}`,
+  STORE_ADMIN_UPDATE_CATEGORY: (id) => `/store/admin/category/${id}`,
+  STORE_ADMIN_DELETE_CATEGORY: (id) => `/store/admin/category/${id}`,
 
   // Orders - Admin
   ADMIN_ORDERS_BY_VENDOR: (vendorId) => `/admin/orders/vendor/${vendorId}`,

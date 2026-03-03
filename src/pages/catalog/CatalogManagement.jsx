@@ -33,10 +33,19 @@ const CatalogManagement = () => {
       permission: PERMISSIONS.VIEW_PRODUCTS,
       color: "#52c41a",
     },
+    {
+      key: "store-categories",
+      title: "Store Categories",
+      description: "Manage store categories and icons",
+      icon: <AppstoreOutlined style={{ fontSize: 48, color: "#722ed1" }} />,
+      path: "/catalog/store-categories",
+      permission: PERMISSIONS.VIEW_PRODUCTS,
+      color: "#722ed1",
+    },
   ];
 
   const accessibleSections = sections.filter((section) =>
-    hasPermission(section.permission)
+    hasPermission(section.permission),
   );
 
   const handleCardClick = (path) => {

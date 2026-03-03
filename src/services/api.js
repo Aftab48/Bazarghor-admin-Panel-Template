@@ -2,6 +2,73 @@ import axios from "axios";
 import { message } from "antd";
 import { API_BASE_URL, ENDPOINTS } from "../constants/endpoints";
 
+let refreshInFlightPromise = null;
+
+const clearAuthState = () => {
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("userRoles");
+  localStorage.removeItem("userPermissions");
+  localStorage.removeItem("userId");
+  localStorage.removeItem("userRole");
+};
+
+const getTokenPairFromRefreshResponse = (response) => {
+  const body = response?.data || {};
+  const data = body?.data || {};
+
+  const accessToken =
+    data?.accessToken ||
+    data?.token ||
+    data?.authToken ||
+    body?.accessToken ||
+    body?.token ||
+    body?.authToken ||
+    "";
+
+  const refreshToken = data?.refreshToken || body?.refreshToken || "";
+
+  return { accessToken, refreshToken };
+};
+
+const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem("refreshToken");
+  const accessToken = localStorage.getItem("authToken");
+
+  if (!refreshToken) {
+    throw new Error("Missing refresh token");
+  }
+
+  const refreshPath =
+    ENDPOINTS.AUTH_REFRESH_TOKEN ||
+    ENDPOINTS.SUPER_ADMIN_REFRESH_TOKEN ||
+    "/auth/refresh";
+  const refreshUrl = `${API_BASE_URL}${refreshPath}`;
+
+  const response = await axios.post(
+    refreshUrl,
+    { refreshToken },
+    {
+      headers: {
+        Authorization: accessToken ? `Bearer ${accessToken}` : "",
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  const nextTokens = getTokenPairFromRefreshResponse(response);
+  if (!nextTokens.accessToken) {
+    throw new Error("Refresh response missing access token");
+  }
+
+  localStorage.setItem("authToken", nextTokens.accessToken);
+  if (nextTokens.refreshToken) {
+    localStorage.setItem("refreshToken", nextTokens.refreshToken);
+  }
+
+  return nextTokens.accessToken;
+};
+
 // Create axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -23,19 +90,28 @@ apiClient.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response) {
       const status = error.response.status;
       const messageText =
         error?.response?.data?.message || error?.message || "Unauthorized";
 
       if (status === 401) {
+        const originalRequest = error?.config || {};
+        const refreshPath =
+          ENDPOINTS.AUTH_REFRESH_TOKEN ||
+          ENDPOINTS.SUPER_ADMIN_REFRESH_TOKEN ||
+          "/auth/refresh";
+        const isRefreshRequest = String(originalRequest?.url || "").includes(
+          refreshPath,
+        );
+
         // For sub-admins, don't force logout on permission-style 401s; show message only
         let storedRoles = [];
         try {
@@ -47,23 +123,48 @@ apiClient.interceptors.response.use(
         const isSubAdmin =
           Array.isArray(storedRoles) && storedRoles.includes("SUB_ADMIN");
         const tokenError = /token|expired|signature|invalid|jwt/i.test(
-          messageText
+          messageText,
         );
 
         if (isSubAdmin && !tokenError) {
           message.error(
-            messageText || "You are not authorized to perform this action."
+            messageText || "You are not authorized to perform this action.",
           );
           return Promise.reject(error);
         }
 
+        // Avoid refresh loops for refresh endpoint or retried request
+        if (isRefreshRequest || originalRequest._retry) {
+          clearAuthState();
+          message.error(messageText || "Unauthorized. Please login again.");
+          if (
+            window.location.pathname !== "/login" &&
+            window.location.pathname !== "/login-staff"
+          ) {
+            window.location.href = "/login";
+          }
+          return Promise.reject(error);
+        }
+
+        try {
+          if (!refreshInFlightPromise) {
+            refreshInFlightPromise = refreshAccessToken().finally(() => {
+              refreshInFlightPromise = null;
+            });
+          }
+
+          const freshAccessToken = await refreshInFlightPromise;
+          originalRequest._retry = true;
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${freshAccessToken}`;
+
+          return apiClient(originalRequest);
+        } catch {
+          // Continue to forced logout below
+        }
+
         // Clear auth state on real auth failures
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("userRoles");
-        localStorage.removeItem("userPermissions");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("userRole");
+        clearAuthState();
         message.error(messageText || "Unauthorized. Please login again.");
         // Redirect to login if not already there
         if (
@@ -74,14 +175,14 @@ apiClient.interceptors.response.use(
         }
       } else if (status === 403) {
         message.error(
-          "Access forbidden. You don't have permission to perform this action."
+          "Access forbidden. You don't have permission to perform this action.",
         );
       } else if (status === 500) {
         message.error("Server error. Please try again later.");
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Helper function to extract data from backend response
@@ -144,8 +245,8 @@ const transformVendorData = (stores) => {
           vendor.status !== undefined
             ? vendor.status
             : store.storeStatus !== undefined
-            ? store.storeStatus
-            : 1,
+              ? store.storeStatus
+              : 1,
         isActive: vendor.isActive !== undefined ? vendor.isActive : true,
         profilePicture: profilePic,
         logo: storePicUri || profilePicUri,
@@ -174,17 +275,18 @@ const apiCall = async (apiFunction) => {
 
 // Dashboard API
 export const dashboardAPI = {
-  getStats: () =>
-    apiCall(() => apiClient.get(ENDPOINTS.DASHBOARD_STATS)),
+  getStats: () => apiCall(() => apiClient.get(ENDPOINTS.DASHBOARD_STATS)),
   getSeries: (period) =>
     apiCall(() =>
       apiClient.get(ENDPOINTS.DASHBOARD_SERIES, {
         params: { period },
-      })
+      }),
     ),
 
   getActiveVendorsAndDeliveryPartners: () =>
-    apiCall(() => apiClient.get(ENDPOINTS.DASHBOARD_ACTIVE_VENDORS_DELIVERY_PARTNERS)),
+    apiCall(() =>
+      apiClient.get(ENDPOINTS.DASHBOARD_ACTIVE_VENDORS_DELIVERY_PARTNERS),
+    ),
   getRecentOrders: () =>
     apiCall(() => apiClient.get(ENDPOINTS.DASHBOARD_RECENT_ORDERS)),
 };
@@ -239,14 +341,14 @@ export const customersAPI = {
     apiCall(() =>
       apiClient.post(ENDPOINTS.USERS_CREATE_CUSTOMER, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   update: (id, formData) =>
     apiCall(() =>
       apiClient.put(ENDPOINTS.USERS_UPDATE_CUSTOMER(id), formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   deleteCustomer: (id) =>
@@ -282,14 +384,14 @@ export const vendorsAPI = {
     apiCall(() =>
       apiClient.post(ENDPOINTS.USERS_CREATE_VENDOR, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   update: (id, formData) =>
     apiCall(() =>
       apiClient.put(ENDPOINTS.USERS_UPDATE_VENDOR(id), formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   delete: (id) =>
@@ -306,7 +408,7 @@ export const vendorsAPI = {
         v.status === 1 ||
         v.status === "pending" ||
         v.status === "PENDING" ||
-        (typeof v.status === "string" && v.status.toLowerCase() === "pending")
+        (typeof v.status === "string" && v.status.toLowerCase() === "pending"),
     );
   },
 
@@ -321,12 +423,12 @@ export const vendorsAPI = {
     apiCall(() =>
       apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(id), {
         status: "suspended",
-      })
+      }),
     ),
 
   unsuspendVendor: (id) =>
     apiCall(() =>
-      apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(id), { status: "active" })
+      apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(id), { status: "active" }),
     ),
 };
 
@@ -336,7 +438,7 @@ export const deliveryPartnersAPI = {
   getAll: async (params) => {
     const response = await apiClient.get(
       ENDPOINTS.USERS_GET_DELIVERY_PARTNER_LIST,
-      { params }
+      { params },
     );
     const partners = extractResponseData(response);
     // Transform delivery partner data to match frontend format
@@ -363,7 +465,7 @@ export const deliveryPartnersAPI = {
 
   getById: async (id) => {
     const response = await apiClient.get(
-      ENDPOINTS.USERS_GET_DELIVERY_PARTNER(id)
+      ENDPOINTS.USERS_GET_DELIVERY_PARTNER(id),
     );
     const partner = extractResponseData(response);
     return {
@@ -389,18 +491,20 @@ export const deliveryPartnersAPI = {
     apiCall(() =>
       apiClient.post(ENDPOINTS.USERS_CREATE_DELIVERY_PARTNER, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   update: (id, formData) =>
     apiCall(() =>
       apiClient.put(ENDPOINTS.USERS_UPDATE_DELIVERY_PARTNER(id), formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   delete: (id) =>
-    apiCall(() => apiClient.delete(ENDPOINTS.USERS_DELETE_DELIVERY_PARTNER(id))),
+    apiCall(() =>
+      apiClient.delete(ENDPOINTS.USERS_DELETE_DELIVERY_PARTNER(id)),
+    ),
 
   verifyStatus: (userId, data) =>
     apiCall(() => apiClient.put(ENDPOINTS.USERS_VERIFY_STATUS(userId), data)),
@@ -411,7 +515,7 @@ export const categoriesAPI = {
     return apiCall(() =>
       apiClient.get(ENDPOINTS.CATEGORIES_LIST, {
         params,
-      })
+      }),
     );
   },
 
@@ -422,7 +526,7 @@ export const categoriesAPI = {
           data instanceof FormData
             ? { "Content-Type": "multipart/form-data" }
             : undefined,
-      })
+      }),
     ),
 
   update: (id, data) =>
@@ -432,7 +536,7 @@ export const categoriesAPI = {
           data instanceof FormData
             ? { "Content-Type": "multipart/form-data" }
             : undefined,
-      })
+      }),
     ),
 
   delete: (id) =>
@@ -445,14 +549,13 @@ export const productsAPI = {
     apiCall(() =>
       apiClient.get(ENDPOINTS.PRODUCTS_ADMIN_GET_LIST, {
         params,
-      })
+      }),
     ),
 
   getById: (id) =>
     apiCall(() => apiClient.get(ENDPOINTS.PRODUCTS_ADMIN_GET_BY_ID(id))),
 
-  getFeatured: () =>
-    apiCall(() => apiClient.get("/products/featured")),
+  getFeatured: () => apiCall(() => apiClient.get("/products/featured")),
 
   toggleFeatured: (id) =>
     apiCall(() => apiClient.post(`/products/${id}/toggle-featured`)),
@@ -461,14 +564,14 @@ export const productsAPI = {
     apiCall(() =>
       apiClient.post(ENDPOINTS.PRODUCTS_ADMIN_ADD, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   update: (id, formData) =>
     apiCall(() =>
       apiClient.put(ENDPOINTS.PRODUCTS_ADMIN_UPDATE(id), formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   delete: (id) =>
@@ -522,20 +625,17 @@ export const ordersAPI = {
 
 // Transactions API
 export const transactionsAPI = {
-  getAll: (params) =>
-    apiCall(() => apiClient.get("/transactions", { params })),
+  getAll: (params) => apiCall(() => apiClient.get("/transactions", { params })),
 
   getVendorPayouts: () =>
     apiCall(() => apiClient.get("/payments/vendor-payouts")),
 
-  getCommissions: () =>
-    apiCall(() => apiClient.get("/payments/commissions")),
+  getCommissions: () => apiCall(() => apiClient.get("/payments/commissions")),
 };
 
 // Promotions API
 export const promotionsAPI = {
-  getBanners: () =>
-    apiCall(() => apiClient.get("/promotions/banners")),
+  getBanners: () => apiCall(() => apiClient.get("/promotions/banners")),
 
   createBanner: (data) =>
     apiCall(() => apiClient.post("/promotions/banners", data)),
@@ -564,8 +664,7 @@ export const analyticsAPI = {
   getSalesReports: (params) =>
     apiCall(() => apiClient.get("/analytics/sales", { params })),
 
-  getDeliveryReports: () =>
-    apiCall(() => apiClient.get("/analytics/delivery")),
+  getDeliveryReports: () => apiCall(() => apiClient.get("/analytics/delivery")),
 
   getCustomerRetention: () =>
     apiCall(() => apiClient.get("/analytics/retention")),
@@ -596,16 +695,24 @@ export const supportAPI = {
 
 // Audit Logs API
 export const auditLogsAPI = {
-  getLogs: (params) =>
-    apiCall(() => apiClient.get("/audit/logs", { params })),
+  getLogs: (params) => apiCall(() => apiClient.get("/audit/logs", { params })),
 };
 
 export default apiClient;
 
 // Auth API (logout & permissions)
 export const authAPI = {
-  logout: () =>
-    apiCall(() => apiClient.post(ENDPOINTS.SUPER_ADMIN_LOGOUT)),
+  logout: () => apiCall(() => apiClient.post(ENDPOINTS.SUPER_ADMIN_LOGOUT)),
+
+  refreshToken: (refreshToken) =>
+    apiCall(() =>
+      apiClient.post(
+        ENDPOINTS.AUTH_REFRESH_TOKEN || ENDPOINTS.SUPER_ADMIN_REFRESH_TOKEN,
+        {
+          refreshToken: refreshToken || localStorage.getItem("refreshToken"),
+        },
+      ),
+    ),
 
   getPermissions: () =>
     apiCall(() => apiClient.get(ENDPOINTS.ADMIN_PERMISSIONS)),
@@ -613,11 +720,9 @@ export const authAPI = {
 
 // Staff Auth & Profile API
 export const staffAuthAPI = {
-  login: (data) =>
-    apiCall(() => apiClient.post(ENDPOINTS.STAFF_LOGIN, data)),
+  login: (data) => apiCall(() => apiClient.post(ENDPOINTS.STAFF_LOGIN, data)),
 
-  logout: () =>
-    apiCall(() => apiClient.post(ENDPOINTS.STAFF_LOGOUT)),
+  logout: () => apiCall(() => apiClient.post(ENDPOINTS.STAFF_LOGOUT)),
 
   getAdminProfile: () =>
     apiCall(() => apiClient.get(ENDPOINTS.STAFF_ADMIN_PROFILE)),
@@ -636,10 +741,14 @@ export const staffAuthAPI = {
     apiCall(() => apiClient.post(ENDPOINTS.STAFF_RESET_PASSWORD, data)),
 
   adminChangePassword: (id, data) =>
-    apiCall(() => apiClient.post(ENDPOINTS.STAFF_ADMIN_CHANGE_PASSWORD(id), data)),
+    apiCall(() =>
+      apiClient.post(ENDPOINTS.STAFF_ADMIN_CHANGE_PASSWORD(id), data),
+    ),
 
   subAdminChangePassword: (id, data) =>
-    apiCall(() => apiClient.post(ENDPOINTS.STAFF_SUB_ADMIN_CHANGE_PASSWORD(id), data)),
+    apiCall(() =>
+      apiClient.post(ENDPOINTS.STAFF_SUB_ADMIN_CHANGE_PASSWORD(id), data),
+    ),
 };
 
 // Store API - Admin
@@ -657,78 +766,107 @@ export const storeAPI = {
     apiCall(() => apiClient.put(ENDPOINTS.STORE_TOGGLE_STATUS(storeId), data)),
 };
 
+export const storeCategoriesAPI = {
+  getStore: (params) =>
+    apiCall(() =>
+      apiClient.get(ENDPOINTS.STORE_ADMIN_GET_CATEGORIES, { params }),
+    ),
+  getById: (id) =>
+    apiCall(() => apiClient.get(ENDPOINTS.STORE_ADMIN_GET_CATEGORY_BY_ID(id))),
+  create: (data) =>
+    apiCall(() =>
+      apiClient.post(ENDPOINTS.STORE_ADMIN_CREATE_CATEGORY, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
+    ),
+  update: (id, data) =>
+    apiCall(() =>
+      apiClient.put(ENDPOINTS.STORE_ADMIN_UPDATE_CATEGORY(id), data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
+    ),
+  delete: (id) =>
+    apiCall(() => apiClient.delete(ENDPOINTS.STORE_ADMIN_DELETE_CATEGORY(id))),
+};
+
 // Subscription API - Vendor & Customer
 export const subscriptionAPI = {
   // Vendor Subscriptions
   vendor: {
     create: (data) =>
-      apiCall(() => apiClient.post(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_CREATE, data)),
+      apiCall(() =>
+        apiClient.post(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_CREATE, data),
+      ),
 
     getAll: () =>
       apiCall(() => apiClient.get(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_GET_ALL)),
 
     getById: (id) =>
-      apiCall(() => apiClient.get(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_GET_BY_ID(id))),
+      apiCall(() =>
+        apiClient.get(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_GET_BY_ID(id)),
+      ),
 
     assign: (subscriptionId, data) =>
       apiCall(() =>
         apiClient.put(
           ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_ASSIGN(subscriptionId),
-          data
-        )
+          data,
+        ),
       ),
 
     renew: (id, data) =>
       apiCall(() =>
-        apiClient.put(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_RENEW(id), data)
+        apiClient.put(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_RENEW(id), data),
       ),
 
     upgrade: (id, data) =>
       apiCall(() =>
-        apiClient.put(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_UPGRADE(id), data)
+        apiClient.put(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_UPGRADE(id), data),
       ),
 
     cancel: (id) =>
-      apiCall(() => apiClient.delete(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_CANCEL(id))),
+      apiCall(() =>
+        apiClient.delete(ENDPOINTS.ADMIN_VENDOR_SUBSCRIPTION_CANCEL(id)),
+      ),
   },
 
   // Customer Subscriptions
   customer: {
     get: (customerId) =>
       apiCall(() =>
-        apiClient.get(ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_GET(customerId))
+        apiClient.get(ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_GET(customerId)),
       ),
 
     purchase: (customerId, data) =>
       apiCall(() =>
         apiClient.post(
           ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_PURCHASE(customerId),
-          data
-        )
+          data,
+        ),
       ),
 
     renew: (customerId, data) =>
       apiCall(() =>
         apiClient.post(
           ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_RENEW(customerId),
-          data
-        )
+          data,
+        ),
       ),
 
     cancel: (customerId, data) =>
       apiCall(() =>
         apiClient.post(
           ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_CANCEL(customerId),
-          data
-        )
+          data,
+        ),
       ),
 
     upgrade: (customerId, data) =>
       apiCall(() =>
         apiClient.post(
           ENDPOINTS.ADMIN_CUSTOMER_SUBSCRIPTION_UPGRADE(customerId),
-          data
-        )
+          data,
+        ),
       ),
   },
 };
@@ -738,10 +876,14 @@ export const rolesAPI = {
   getAll: () => apiCall(() => apiClient.get(ENDPOINTS.ADMIN_ROLES_GET)),
 
   updatePermissions: (code, data) =>
-    apiCall(() => apiClient.put(ENDPOINTS.ADMIN_ROLES_UPDATE_PERMISSIONS(code), data)),
+    apiCall(() =>
+      apiClient.put(ENDPOINTS.ADMIN_ROLES_UPDATE_PERMISSIONS(code), data),
+    ),
 
   bulkUpdatePermissions: (data) =>
-    apiCall(() => apiClient.put(ENDPOINTS.ADMIN_ROLES_BULK_UPDATE_PERMISSIONS, data)),
+    apiCall(() =>
+      apiClient.put(ENDPOINTS.ADMIN_ROLES_BULK_UPDATE_PERMISSIONS, data),
+    ),
 };
 
 // Vendor Analytics API
@@ -752,8 +894,7 @@ export const vendorAnalyticsAPI = {
   getLimited: () =>
     apiCall(() => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_LIMITED)),
 
-  getFull: () =>
-    apiCall(() => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_FULL)),
+  getFull: () => apiCall(() => apiClient.get(ENDPOINTS.VENDOR_ANALYTICS_FULL)),
 };
 
 // Map/Places API
@@ -770,17 +911,20 @@ export const mapPlsAPI = {
 
 // Admin API (profile & password flows)
 export const adminAPI = {
-  getProfile: () =>
-    apiCall(() => apiClient.get(ENDPOINTS.SUPER_ADMIN_PROFILE)),
+  getProfile: () => apiCall(() => apiClient.get(ENDPOINTS.SUPER_ADMIN_PROFILE)),
 
   updateProfile: (data) =>
     apiCall(() => apiClient.put(ENDPOINTS.SUPER_ADMIN_UPDATE, data)),
 
   changePassword: (id, data) =>
-    apiCall(() => apiClient.post(ENDPOINTS.SUPER_ADMIN_CHANGE_PASSWORD(id), data)),
+    apiCall(() =>
+      apiClient.post(ENDPOINTS.SUPER_ADMIN_CHANGE_PASSWORD(id), data),
+    ),
 
   forgotPassword: (email) =>
-    apiCall(() => apiClient.post(ENDPOINTS.SUPER_ADMIN_FORGET_PASSWORD, { email })),
+    apiCall(() =>
+      apiClient.post(ENDPOINTS.SUPER_ADMIN_FORGET_PASSWORD, { email }),
+    ),
 
   resetPassword: (data) =>
     apiCall(() => apiClient.post(ENDPOINTS.SUPER_ADMIN_RESET_PASSWORD, data)),
@@ -791,29 +935,32 @@ export const staffAPI = {
   getAll: (params) =>
     apiCall(() => apiClient.get(ENDPOINTS.STAFF_GET_ALL, { params })),
 
-  getById: (id) =>
-    apiCall(() => apiClient.get(ENDPOINTS.STAFF_GET_BY_ID(id))),
+  getById: (id) => apiCall(() => apiClient.get(ENDPOINTS.STAFF_GET_BY_ID(id))),
 
   addAdmin: (formData) =>
     apiCall(() =>
       apiClient.post(ENDPOINTS.STAFF_ADD_ADMIN, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   updateAdmin: (id, formData) =>
     apiCall(() =>
       apiClient.put(ENDPOINTS.STAFF_UPDATE_ADMIN(id), formData, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
+      }),
     ),
 
   deleteAdmin: (id) =>
     apiCall(() => apiClient.delete(ENDPOINTS.STAFF_DELETE(id))),
 
   adminChangePassword: (id, data) =>
-    apiCall(() => apiClient.post(ENDPOINTS.STAFF_ADMIN_CHANGE_PASSWORD(id), data)),
+    apiCall(() =>
+      apiClient.post(ENDPOINTS.STAFF_ADMIN_CHANGE_PASSWORD(id), data),
+    ),
 
   subAdminChangePassword: (id, data) =>
-    apiCall(() => apiClient.post(ENDPOINTS.STAFF_SUB_ADMIN_CHANGE_PASSWORD(id), data)),
+    apiCall(() =>
+      apiClient.post(ENDPOINTS.STAFF_SUB_ADMIN_CHANGE_PASSWORD(id), data),
+    ),
 };

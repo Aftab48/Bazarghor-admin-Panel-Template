@@ -102,6 +102,7 @@ export const ROUTE_PERMISSIONS = {
 
   // Catalog
   "/catalog/categories": PERMISSIONS.VIEW_PRODUCTS,
+  "/catalog/store-categories": PERMISSIONS.VIEW_PRODUCTS,
   "/catalog/products": PERMISSIONS.VIEW_PRODUCTS,
 
   // Orders

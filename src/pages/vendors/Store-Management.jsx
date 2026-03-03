@@ -52,6 +52,45 @@ const normalizeStatusCode = (status) => {
   return status;
 };
 
+const getVendorDateValue = (record) => {
+  const rawDate =
+    record?.joinedDate ||
+    record?.createdAt ||
+    record?.updatedAt ||
+    record?.createdOn ||
+    null;
+  const time = rawDate ? new Date(rawDate).getTime() : NaN;
+  return Number.isNaN(time) ? 0 : time;
+};
+
+const getVendorDateFilterOptions = () => [
+  { text: "Last 7 Days", value: "7d" },
+  { text: "Last 30 Days", value: "30d" },
+  { text: "This Year", value: "year" },
+];
+
+const matchVendorDateFilter = (filterValue, record) => {
+  const dateValue = getVendorDateValue(record);
+  if (!dateValue) return false;
+
+  const now = Date.now();
+  if (filterValue === "7d") {
+    return dateValue >= now - 7 * 24 * 60 * 60 * 1000;
+  }
+  if (filterValue === "30d") {
+    return dateValue >= now - 30 * 24 * 60 * 60 * 1000;
+  }
+  if (filterValue === "year") {
+    return new Date(dateValue).getFullYear() === new Date(now).getFullYear();
+  }
+  return true;
+};
+
+const renderVendorDate = (record) => {
+  const dateValue = getVendorDateValue(record);
+  return dateValue ? new Date(dateValue).toLocaleDateString() : "N/A";
+};
+
 const VendorManagement = () => {
   const [loading, setLoading] = useState(false);
   const [pendingVendors, setPendingVendors] = useState([]);
@@ -111,8 +150,8 @@ const VendorManagement = () => {
                 storeProductsCount !== undefined
                   ? storeProductsCount
                   : productCounts[vendorKey] !== undefined
-                  ? productCounts[vendorKey]
-                  : v.productsCount || 0,
+                    ? productCounts[vendorKey]
+                    : v.productsCount || 0,
               storeOpen: v.isOpen ?? v.storeOpen ?? v.isActive ?? v.storeStatus,
               categoryName:
                 v.category?.name || v.categoryName || v.category || "N/A",
@@ -128,11 +167,11 @@ const VendorManagement = () => {
 
       setPendingVendors(normalizedVendors);
       setActiveVendors(
-        normalizedVendors.filter((v) => v.status === VENDOR_STATUS.APPROVED)
+        normalizedVendors.filter((v) => v.status === VENDOR_STATUS.APPROVED),
       );
     } catch (error) {
       message.error(
-        error?.response?.data?.message || "Failed to fetch vendors"
+        error?.response?.data?.message || "Failed to fetch vendors",
       );
     } finally {
       setLoading(false);
@@ -158,12 +197,12 @@ const VendorManagement = () => {
         roleType: "VENDOR",
       });
       message.success(
-        isApproved ? "Vendor approved successfully" : "Vendor rejected"
+        isApproved ? "Vendor approved successfully" : "Vendor rejected",
       );
       fetchVendors();
     } catch (error) {
       message.error(
-        error?.response?.data?.message || "Failed to update vendor status"
+        error?.response?.data?.message || "Failed to update vendor status",
       );
     } finally {
       setStatusUpdatingId(null);
@@ -183,7 +222,7 @@ const VendorManagement = () => {
           fetchVendors();
         } catch (error) {
           message.error(
-            error?.response?.data?.message || "Failed to suspend vendor"
+            error?.response?.data?.message || "Failed to suspend vendor",
           );
         }
       },
@@ -197,7 +236,7 @@ const VendorManagement = () => {
       fetchVendors();
     } catch (error) {
       message.error(
-        error?.response?.data?.message || "Failed to unsuspend vendor"
+        error?.response?.data?.message || "Failed to unsuspend vendor",
       );
     }
   };
@@ -233,7 +272,7 @@ const VendorManagement = () => {
       setSelectedStore(normalizedStore || record);
     } catch (error) {
       message.error(
-        error?.response?.data?.message || "Failed to load store details"
+        error?.response?.data?.message || "Failed to load store details",
       );
       setSelectedStore(record);
     } finally {
@@ -324,7 +363,10 @@ const VendorManagement = () => {
       dataIndex: "joinedDate",
       key: "joinedDate",
       responsive: ["lg"],
-      render: (date) => (date ? new Date(date).toLocaleDateString() : "N/A"),
+      render: (_, record) => renderVendorDate(record),
+      sorter: (a, b) => getVendorDateValue(a) - getVendorDateValue(b),
+      filters: getVendorDateFilterOptions(),
+      onFilter: (value, record) => matchVendorDateFilter(value, record),
     },
 
     {
@@ -429,6 +471,16 @@ const VendorManagement = () => {
       key: "status",
       responsive: ["md"],
       render: (status) => <StatusTag status={status} />,
+    },
+    {
+      title: "Joined Date",
+      dataIndex: "joinedDate",
+      key: "activeJoinedDate",
+      responsive: ["lg"],
+      render: (_, record) => renderVendorDate(record),
+      sorter: (a, b) => getVendorDateValue(a) - getVendorDateValue(b),
+      filters: getVendorDateFilterOptions(),
+      onFilter: (value, record) => matchVendorDateFilter(value, record),
     },
     {
       title: "Rating",
@@ -585,7 +637,7 @@ const VendorManagement = () => {
                   title="Total Sales"
                   value={activeVendors.reduce(
                     (sum, v) => sum + (v.totalSales || 0),
-                    0
+                    0,
                   )}
                   prefix={<DollarOutlined />}
                   valueStyle={{ color: "#52c41a" }}
@@ -598,7 +650,7 @@ const VendorManagement = () => {
                   title="Total Products"
                   value={pendingVendors.reduce(
                     (sum, v) => sum + (v.productsCount || 0),
-                    0
+                    0,
                   )}
                   prefix={<AppstoreOutlined />}
                   valueStyle={{ color: "#1890ff" }}

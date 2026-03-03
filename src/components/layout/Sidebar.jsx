@@ -108,6 +108,10 @@ const Sidebar = ({ collapsed, onCollapse, onBreakpoint, isMobile }) => {
             label: <Link to="/catalog/categories">Categories</Link>,
           },
           {
+            key: "/catalog/store-categories",
+            label: <Link to="/catalog/store-categories">Store Categories</Link>,
+          },
+          {
             key: "/catalog/products",
             label: <Link to="/catalog/products">Products</Link>,
           },
@@ -234,7 +238,7 @@ const Sidebar = ({ collapsed, onCollapse, onBreakpoint, isMobile }) => {
     menuItems.forEach((item) => {
       if (item.children) {
         const hasActiveChild = item.children.some(
-          (child) => child.key === path
+          (child) => child.key === path,
         );
         if (hasActiveChild) {
           openKeys.push(item.key);

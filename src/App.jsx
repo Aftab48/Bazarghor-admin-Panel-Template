@@ -22,6 +22,7 @@ import StoreManagement from "./pages/vendors/Store-Management";
 import DeliveryAgentManagement from "./pages/delivery/DeliveryAgentManagement";
 import CatalogManagement from "./pages/catalog/CatalogManagement";
 import Categories from "./pages/catalog/Categories";
+import StoreCategory from "./pages/catalog/StoreCategory";
 import Products from "./pages/catalog/Products";
 import OrderManagement from "./pages/orders/OrderManagement";
 import Transactions from "./pages/payments/Transactions";
@@ -166,6 +167,16 @@ function App() {
                     requiredPermissions={[PERMISSIONS.VIEW_PRODUCTS]}
                   >
                     <Products />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="catalog/store-categories"
+                element={
+                  <RequirePermission
+                    requiredPermissions={[PERMISSIONS.VIEW_PRODUCTS]}
+                  >
+                    <StoreCategory />
                   </RequirePermission>
                 }
               />
